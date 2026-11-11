@@ -66,8 +66,8 @@
     "layout": "grid",
     "arrangement": "classic",
     "range": {
-      "from": "2016-09-01",
-      "to": "2018-10-31"
+      "from": "2017-01-01",
+      "to": "2018-08-31"
     }
   },
   "pages": [
