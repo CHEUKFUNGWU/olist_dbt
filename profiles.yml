@@ -1,0 +1,15 @@
+# Local development profile. DuckDB needs no credentials, so this file is safe to commit.
+# Usage: dbt build --profiles-dir .
+olist:
+  target: dev
+  outputs:
+    dev:
+      type: duckdb
+      path: "./olist.duckdb"
+      schema: dbt_dev        # expanded by generate_schema_name to dbt_dev_staging / dbt_dev_marts
+      threads: 4
+    prod:
+      type: duckdb
+      path: "./olist.duckdb"
+      schema: analytics      # prod uses the bare layer names: staging / marts
+      threads: 4

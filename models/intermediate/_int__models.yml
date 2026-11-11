@@ -1,0 +1,124 @@
+version: 2
+
+models:
+  - name: int_orders__item_aggregates
+    description: "Order items aggregated to order grain. One row per order."
+    columns:
+      - name: order_id
+        description: "Order primary key."
+        data_tests: [unique, not_null]
+      - name: item_count
+        description: "Number of item rows in the order."
+        data_tests:
+          - not_null
+          - dbt_utils.expression_is_true:
+              arguments:
+                expression: ">= 1"
+      - name: items_value
+        description: "Total item value in BRL."
+        data_tests:
+          - dbt_utils.expression_is_true:
+              arguments:
+                expression: ">= 0"
+      - name: freight_value
+        description: "Total freight in BRL."
+        data_tests:
+          - dbt_utils.expression_is_true:
+              arguments:
+                expression: ">= 0"
+
+  - name: int_orders__payment_aggregates
+    description: "Payments aggregated to order grain. One row per order."
+    columns:
+      - name: order_id
+        description: "Order primary key."
+        data_tests: [unique, not_null]
+      - name: payment_total
+        description: "Total of all payments on the order."
+        data_tests:
+          - not_null
+          - dbt_utils.expression_is_true:
+              arguments:
+                expression: ">= 0"
+      - name: payment_count
+        description: "Number of payment rows."
+        data_tests:
+          - not_null
+          - dbt_utils.expression_is_true:
+              arguments:
+                expression: ">= 1"
+
+  - name: int_orders__review_aggregates
+    description: "Reviews aggregated to order grain, keeping the latest. One row per order."
+    columns:
+      - name: order_id
+        description: "Order primary key."
+        data_tests: [unique, not_null]
+      - name: latest_review_score
+        description: "Score of the most recent review, 1-5."
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: [1, 2, 3, 4, 5]
+      - name: review_count
+        description: "Number of reviews on the order."
+        data_tests:
+          - not_null
+
+  - name: int_orders__delivery
+    description: "Delivery metrics: delivered flag, delivery days, late flag. One row per order."
+    columns:
+      - name: order_id
+        description: "Order primary key."
+        data_tests: [unique, not_null]
+      - name: is_delivered
+        description: "Whether the order reached the customer."
+        data_tests: [not_null]
+      - name: is_late
+        description: "Whether delivery was later than promised. Null when not delivered, counted as neither on time nor late."
+        data_tests:
+          - dbt_utils.expression_is_true:
+              arguments:
+                # dbt_utils prefixes the column name, so this renders as
+                # "is_late is null or is_delivered"
+                expression: "is null or is_delivered"
+      - name: delivery_days
+        description: "Days from purchase to delivery. Null when not delivered."
+        data_tests:
+          - dbt_utils.expression_is_true:
+              arguments:
+                # renders as "delivery_days is null or delivery_days >= 0"
+                expression: "is null or delivery_days >= 0"
+
+  - name: int_customers__order_rollup
+    description: "Customer rollup at customer_unique_id (person) grain."
+    columns:
+      - name: customer_unique_id
+        data_tests: [unique, not_null]
+      - name: order_count
+        data_tests:
+          - not_null
+          - dbt_utils.expression_is_true:
+              arguments:
+                expression: ">= 1"
+      - name: lifetime_value
+        data_tests:
+          - dbt_utils.expression_is_true:
+              arguments:
+                expression: ">= 0"
+
+  - name: int_sellers__order_rollup
+    description: "Seller rollup at seller_id grain. Late rate is computed after deduplicating to seller x order."
+    columns:
+      - name: seller_id
+        data_tests: [unique, not_null]
+      - name: order_count
+        data_tests: [not_null]
+      - name: late_rate
+        description: "Share of delivered orders that were late, 0-1."
+        data_tests:
+          - dbt_utils.expression_is_true:
+              arguments:
+                # renders as "late_rate is null or (late_rate >= 0 and late_rate <= 1)"
+                expression: "is null or (late_rate >= 0 and late_rate <= 1)"

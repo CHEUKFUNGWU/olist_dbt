@@ -1,0 +1,267 @@
+version: 2
+
+models:
+  - name: fct_orders
+    description: "Accumulated snapshot fact, one row per order. Five role-playing date keys point at dim_dates; events that have not happened use the unknown member (0)."
+    columns:
+      - name: order_id
+        description: "Degenerate dimension and row key. Unique and not null."
+        data_tests: [unique, not_null]
+      - name: customer_key
+        description: "Foreign key to dim_customers."
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_customers')
+                field: customer_key
+      - name: customer_id
+        description: "Order-level customer identifier, kept as a degenerate attribute for traceability."
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('stg_olist__customers')
+                field: customer_id
+      - name: order_date_key
+        description: "Purchase date, role-playing dim_dates key. YYYYMMDD."
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_dates')
+                field: date_key
+      - name: approved_date_key
+        description: "Payment approval date, role-playing dim_dates key. 0 when not approved."
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_dates')
+                field: date_key
+      - name: carrier_date_key
+        description: "Handover to carrier date, role-playing dim_dates key. 0 when not handed over."
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_dates')
+                field: date_key
+      - name: delivered_date_key
+        description: "Delivery date, role-playing dim_dates key. 0 when not delivered."
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_dates')
+                field: date_key
+      - name: estimated_date_key
+        description: "Promised delivery date, role-playing dim_dates key. 0 when missing."
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_dates')
+                field: date_key
+      - name: order_status
+        description: "Order status."
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: ['created', 'approved', 'invoiced', 'processing', 'shipped', 'delivered', 'canceled', 'unavailable']
+      - name: payment_total
+        description: "Total payment amount. Additive."
+        data_tests:
+          - not_null
+          - dbt_utils.expression_is_true:
+              arguments:
+                expression: ">= 0"
+      - name: items_value
+        description: "Total item value. Additive."
+        data_tests:
+          - not_null
+          - dbt_utils.expression_is_true:
+              arguments:
+                expression: ">= 0"
+      - name: delivery_days
+        description: "Days from purchase to delivery. Non-additive duration."
+      - name: is_late
+        description: "Whether delivery was late. Null when not delivered."
+        data_tests:
+          - dbt_utils.expression_is_true:
+              arguments:
+                # renders as "is_late is null or is_delivered"
+                expression: "is null or is_delivered"
+
+  - name: fct_order_items
+    description: "Transaction fact, one row per order line. Surrogate dimension keys, two role-playing date keys, and order_id/order_item_id as degenerate dimensions."
+    data_tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns: ['order_id', 'order_item_id']
+    columns:
+      - name: order_item_key
+        description: "Row key built from order_id + order_item_id."
+        data_tests: [unique, not_null]
+      - name: order_id
+        description: "Degenerate dimension."
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('stg_olist__orders')
+                field: order_id
+      - name: order_item_id
+        description: "Degenerate dimension."
+        data_tests: [not_null]
+      - name: customer_key
+        description: "Foreign key to dim_customers."
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_customers')
+                field: customer_key
+      - name: product_key
+        description: "Foreign key to dim_products."
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_products')
+                field: product_key
+      - name: seller_key
+        description: "Foreign key to dim_sellers."
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_sellers')
+                field: seller_key
+      - name: order_date_key
+        description: "Purchase date, role-playing dim_dates key."
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_dates')
+                field: date_key
+      - name: shipping_limit_date_key
+        description: "Shipping limit date, role-playing dim_dates key."
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_dates')
+                field: date_key
+      - name: quantity
+        description: "Always 1 by construction, kept so summing quantity is a legal additive measure."
+        data_tests:
+          - dbt_utils.expression_is_true:
+              arguments:
+                expression: "= 1"
+      - name: price
+        description: "Unit price in BRL. Additive."
+        data_tests:
+          - not_null
+          - dbt_utils.expression_is_true:
+              arguments:
+                expression: ">= 0"
+
+  - name: dim_customers
+    description: "Conformed customer dimension, one row per person (customer_unique_id). Primary key is customer_key."
+    columns:
+      - name: customer_key
+        description: "Surrogate primary key, md5 of customer_unique_id."
+        data_tests: [unique, not_null]
+      - name: customer_unique_id
+        description: "Alternate key: the person identifier from the source."
+        data_tests: [unique, not_null]
+      - name: state
+        description: "State of the most recent order."
+        data_tests:
+          - dbt_utils.expression_is_true:
+              arguments:
+                # renders as "state is null or length(state) = 2"
+                expression: "is null or length(state) = 2"
+      - name: customer_segment
+        description: "One-time or repeat buyer."
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: ['one_time', 'repeat']
+
+  - name: dim_products
+    description: "Conformed product dimension, one row per product. Category attributes are flattened here; no snowflake."
+    columns:
+      - name: product_key
+        description: "Surrogate primary key, md5 of product_id."
+        data_tests: [unique, not_null]
+      - name: product_id
+        description: "Alternate key: the product identifier from the source."
+        data_tests: [unique, not_null]
+      - name: category_en
+        description: "English category, unknown when missing."
+        data_tests: [not_null]
+
+  - name: dim_sellers
+    description: "Conformed seller dimension, one row per seller. Primary key is seller_key."
+    columns:
+      - name: seller_key
+        description: "Surrogate primary key, md5 of seller_id."
+        data_tests: [unique, not_null]
+      - name: seller_id
+        description: "Alternate key: the seller identifier from the source."
+        data_tests: [unique, not_null]
+      - name: late_rate
+        description: "Share of this seller delivered orders that were late."
+        data_tests:
+          - dbt_utils.expression_is_true:
+              arguments:
+                # renders as "late_rate is null or (late_rate >= 0 and late_rate <= 1)"
+                expression: "is null or (late_rate >= 0 and late_rate <= 1)"
+
+  - name: dim_dates
+    description: "Conformed date dimension, one row per day from 2016-09-01 to 2020-12-31, plus the unknown member (date_key = 0). The range covers the latest shipping limit date (2020-04-09)."
+    columns:
+      - name: date_key
+        description: "Surrogate primary key, YYYYMMDD as an integer. 0 is the unknown member."
+        data_tests: [unique, not_null]
+      - name: date_day
+        description: "Calendar date. 1900-01-01 on the unknown member."
+        data_tests: [unique, not_null]
+
+  - name: fct_payments
+    description: "Transaction fact, one row per payment. The payments table has no timestamp, so order_date_key uses the order purchase date as a proxy."
+    data_tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns: ['order_id', 'payment_sequential']
+    columns:
+      - name: payment_key
+        data_tests: [unique, not_null]
+      - name: customer_key
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_customers')
+                field: customer_key
+      - name: order_date_key
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_dates')
+                field: date_key
+      - name: payment_type
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: ['credit_card', 'boleto', 'voucher', 'debit_card', 'not_defined']
+      - name: payment_value
+        data_tests:
+          - not_null
+          - dbt_utils.expression_is_true:
+              arguments:
+                expression: ">= 0"

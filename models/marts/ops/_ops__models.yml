@@ -1,0 +1,22 @@
+version: 2
+
+models:
+  - name: mart_ops__delivery_sla
+    description: "Delivery performance, grain month_start + state."
+    data_tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns: ['month_start', 'state']
+    columns:
+      - name: order_count
+        data_tests:
+          - dbt_utils.expression_is_true:
+              arguments:
+                expression: ">= 1"
+      - name: late_rate
+        description: "Share of delivered orders that were late, 0-1."
+        data_tests:
+          - dbt_utils.expression_is_true:
+              arguments:
+                # renders as "late_rate is null or (late_rate >= 0 and late_rate <= 1)"
+                expression: "is null or (late_rate >= 0 and late_rate <= 1)"

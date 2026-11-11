@@ -1,0 +1,191 @@
+version: 2
+
+models:
+  - name: stg_olist__orders
+    description: "Orders, one row per order. Timestamps cast, no business filtering."
+    data_tests:
+      - dbt_utils.expression_is_true:
+          arguments:
+            expression: "delivered_to_customer_at is null or delivered_to_customer_at >= purchased_at"
+    columns:
+      - name: order_id
+        description: "Order primary key."
+        data_tests: [unique, not_null]
+      - name: customer_id
+        description: "Per-order customer key, almost one per order. Use customer_unique_id for person-level analysis."
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('stg_olist__customers')
+                field: customer_id
+      - name: order_status
+        description: "Order status."
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: ['created', 'approved', 'invoiced', 'processing', 'shipped', 'delivered', 'canceled', 'unavailable']
+      - name: purchased_at
+        description: "Order purchase timestamp. No nulls across 99,441 rows, so it can be asserted not null."
+        data_tests: [not_null]
+
+  - name: stg_olist__order_items
+    description: "Order items, one row per product line in an order."
+    data_tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns: ['order_id', 'order_item_id']
+    columns:
+      - name: order_id
+        description: "Order this row belongs to."
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('stg_olist__orders')
+                field: order_id
+      - name: order_item_id
+        description: "Item sequence within the order. Not unique on its own."
+        data_tests: [not_null]
+      - name: product_id
+        description: "Product key."
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('stg_olist__products')
+                field: product_id
+      - name: seller_id
+        description: "Seller key."
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('stg_olist__sellers')
+                field: seller_id
+      - name: price
+        description: "Unit price in BRL."
+        data_tests:
+          - not_null
+          - dbt_utils.expression_is_true:
+              arguments:
+                expression: ">= 0"
+      - name: freight_value
+        description: "Freight allocated to this row, in BRL."
+        data_tests:
+          - not_null
+          - dbt_utils.expression_is_true:
+              arguments:
+                expression: ">= 0"
+
+  - name: stg_olist__order_payments
+    description: "Payment rows, one per payment. An order can be paid several times."
+    data_tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns: ['order_id', 'payment_sequential']
+    columns:
+      - name: order_id
+        description: "Order this row belongs to."
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('stg_olist__orders')
+                field: order_id
+      - name: payment_sequential
+        description: "Payment sequence number within the order."
+        data_tests: [not_null]
+      - name: payment_type
+        description: "Payment method."
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: ['credit_card', 'boleto', 'voucher', 'debit_card', 'not_defined']
+      - name: payment_value
+        description: "Amount of this payment in BRL."
+        data_tests:
+          - not_null
+          - dbt_utils.expression_is_true:
+              arguments:
+                expression: ">= 0"
+
+  - name: stg_olist__order_reviews
+    description: "Reviews. review_id repeats in the raw data (789 ids, up to 3 rows), so it is deduplicated to the latest row; one order can still have several reviews."
+    columns:
+      - name: review_id
+        description: "Review primary key. Unique after deduplication; not unique in the raw data."
+        data_tests: [unique, not_null]
+      - name: order_id
+        description: "Order id. Not unique here: one order can have several reviews."
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('stg_olist__orders')
+                field: order_id
+      - name: review_score
+        description: "Review score, 1-5."
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: [1, 2, 3, 4, 5]
+
+  - name: stg_olist__customers
+    description: "Customers, one row per customer_id. customer_unique_id identifies the person."
+    columns:
+      - name: customer_id
+        description: "Order-level customer key. Unique."
+        data_tests: [unique, not_null]
+      - name: customer_unique_id
+        description: "Person-level key. Repeats across orders. Use it for the customer dimension."
+        data_tests: [not_null]
+      - name: zip_code_prefix
+        description: "Five-digit zip code prefix, zero-padded to a string."
+        data_tests:
+          - not_null
+          - dbt_utils.expression_is_true:
+              arguments:
+                # renders as "zip_code_prefix is not null and length(zip_code_prefix) = 5"
+                expression: "is not null and length(zip_code_prefix) = 5"
+      - name: state
+        description: "Two-letter Brazilian state code."
+        data_tests:
+          - dbt_utils.expression_is_true:
+              arguments:
+                # renders as "state is not null and length(state) = 2"
+                expression: "is not null and length(state) = 2"
+
+  - name: stg_olist__sellers
+    description: "Sellers, one row per seller_id."
+    columns:
+      - name: seller_id
+        description: "Seller primary key."
+        data_tests: [unique, not_null]
+      - name: zip_code_prefix
+        description: "Five-digit zip code prefix, zero-padded to a string."
+        data_tests: [not_null]
+
+  - name: stg_olist__products
+    description: "Products with English category. Missing categories become unknown."
+    columns:
+      - name: product_id
+        description: "Product primary key."
+        data_tests: [unique, not_null]
+      - name: category_en
+        description: "English category, coalesced to unknown when missing."
+        data_tests: [not_null]
+
+  - name: stg_olist__geolocation
+    description: "Geolocation aggregated to one row per zip prefix, safe to join."
+    columns:
+      - name: zip_code_prefix
+        description: "Five-digit zip code prefix. Unique after aggregation."
+        data_tests: [unique, not_null]
+      - name: latitude
+        description: "Mean latitude for this zip prefix."
+        data_tests: [not_null]
+      - name: longitude
+        description: "Mean longitude for this zip prefix."
+        data_tests: [not_null]
