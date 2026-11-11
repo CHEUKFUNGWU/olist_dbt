@@ -24,6 +24,11 @@
         "id": "is_late",
         "label": "Is late",
         "column": "is_late"
+      },
+      {
+        "id": "lateness_bucket",
+        "label": "Delivery outcome",
+        "column": "lateness_bucket"
       }
     ],
     "measures": [
@@ -197,7 +202,7 @@
           "kind": "breakdown",
           "title": "Review score: on time vs late",
           "measure": "avg_review",
-          "by": "is_late",
+          "by": "lateness_bucket",
           "chart": "bars"
         },
         {

@@ -20,7 +20,15 @@ select
     case when o.is_late then 1 else 0 end                         as late_flag,
     case when o.is_delivered then 1 else 0 end                    as delivered_flag,
     case when o.latest_review_score is not null then 1 else 0 end as reviewed_flag,
-    case when o.latest_review_score <= 2 then 1 else 0 end        as low_score_flag
+    case when o.latest_review_score <= 2 then 1 else 0 end        as low_score_flag,
+
+    -- is_late is a nullable boolean: true, false, or null for orders that never arrived.
+    -- A chart cannot label those three states, so the feed names them.
+    case
+        when o.is_late is null then 'Not delivered'
+        when o.is_late        then 'Late'
+        else                       'On time'
+    end                                                           as lateness_bucket
 
 from {{ ref('fct_orders') }} o
 left join {{ ref('dim_dates') }} d     on o.order_date_key = d.date_key

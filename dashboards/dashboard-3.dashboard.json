@@ -98,7 +98,7 @@
   },
   "view": {
     "layout": "grid",
-    "arrangement": "rail",
+    "arrangement": "classic",
     "range": {
       "from": "2016-09-01",
       "to": "2018-10-17"

@@ -137,7 +137,7 @@ order by 1;
 
 Two feeds are deliberately wider than the table they copy, because a dashboard cannot join dimensions itself:
 
-- `export_fct_orders` adds a real `order_date` (from `dim_dates`), `customer_state` (from `dim_customers`) and four 0/1 flags (`late_flag`, `delivered_flag`, `reviewed_flag`, `low_score_flag`) so rates can be summed instead of averaged
+- `export_fct_orders` adds a real `order_date` (from `dim_dates`), `customer_state` (from `dim_customers`), four 0/1 flags (`late_flag`, `delivered_flag`, `reviewed_flag`, `low_score_flag`) so rates can be summed instead of averaged, and `lateness_bucket` (`On time` / `Late` / `Not delivered`), because a nullable boolean reaches a chart as false, true and a blank
 - `export_seller_performance` adds `as_of_date`, the latest order date in the load. The scorecard has no time dimension, so this is a single as-of point: filter on it, never trend across it
 
 `exports/` is gitignored: the files are rebuilt by `dbt build` and should never be committed.
