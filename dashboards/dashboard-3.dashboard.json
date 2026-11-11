@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "title": "卖家排行",
+  "title": "Seller ranking",
   "source": {
     "kind": "file",
     "path": "exports/seller_performance.parquet"
@@ -12,19 +12,19 @@
     "dimensions": [
       {
         "id": "seller",
-        "label": "卖家",
+        "label": "Seller",
         "column": "seller_id"
       },
       {
         "id": "seller_state",
-        "label": "卖家所在州",
+        "label": "Seller state",
         "column": "state"
       }
     ],
     "measures": [
       {
         "id": "sellers",
-        "label": "卖家数",
+        "label": "Sellers",
         "format": "count",
         "expr": {
           "countDistinct": "seller_id"
@@ -32,7 +32,7 @@
       },
       {
         "id": "orders",
-        "label": "订单数",
+        "label": "Orders",
         "format": "count",
         "expr": {
           "sum": "order_count"
@@ -40,7 +40,7 @@
       },
       {
         "id": "revenue",
-        "label": "销售额",
+        "label": "Sales",
         "format": "money",
         "expr": {
           "sum": "item_revenue"
@@ -48,7 +48,7 @@
       },
       {
         "id": "delivered",
-        "label": "已送达订单",
+        "label": "Delivered orders",
         "format": "count",
         "expr": {
           "sum": "delivered_orders"
@@ -56,7 +56,7 @@
       },
       {
         "id": "late",
-        "label": "迟到订单",
+        "label": "Late orders",
         "format": "count",
         "expr": {
           "sum": "late_orders"
@@ -64,7 +64,7 @@
       },
       {
         "id": "late_rate",
-        "label": "迟到率",
+        "label": "Late rate",
         "format": "percent",
         "expr": {
           "ratio": [
@@ -76,7 +76,7 @@
       },
       {
         "id": "cancelled",
-        "label": "取消订单",
+        "label": "Cancelled orders",
         "format": "count",
         "expr": {
           "sum": "cancelled_orders"
@@ -84,7 +84,7 @@
       },
       {
         "id": "cancel_rate",
-        "label": "取消率",
+        "label": "Cancellation rate",
         "format": "percent",
         "expr": {
           "ratio": [
@@ -98,7 +98,7 @@
   },
   "view": {
     "layout": "grid",
-    "arrangement": "breakdown",
+    "arrangement": "rail",
     "range": {
       "from": "2018-10-17",
       "to": "2018-10-17"
@@ -107,30 +107,30 @@
   "pages": [
     {
       "id": "sellers",
-      "title": "卖家排行",
+      "title": "Seller ranking",
       "widgets": [
         {
           "id": "w1",
           "kind": "kpi",
-          "title": "卖家数",
+          "title": "Sellers",
           "measure": "sellers"
         },
         {
           "id": "w2",
           "kind": "kpi",
-          "title": "整体迟到率",
+          "title": "Overall late rate",
           "measure": "late_rate"
         },
         {
           "id": "w3",
           "kind": "kpi",
-          "title": "整体取消率",
+          "title": "Overall cancellation rate",
           "measure": "cancel_rate"
         },
         {
           "id": "w4",
           "kind": "breakdown",
-          "title": "各州卖家迟到率",
+          "title": "Seller late rate by state",
           "measure": "late_rate",
           "by": "seller_state",
           "chart": "bars"
@@ -138,7 +138,7 @@
         {
           "id": "w5",
           "kind": "table",
-          "title": "卖家明细",
+          "title": "Seller detail",
           "by": "seller",
           "measures": [
             "orders",

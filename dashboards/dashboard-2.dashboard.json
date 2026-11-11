@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "title": "支付结构",
+  "title": "Payment mix",
   "source": {
     "kind": "file",
     "path": "exports/payment_mix.parquet"
@@ -12,14 +12,14 @@
     "dimensions": [
       {
         "id": "payment_type",
-        "label": "支付方式",
+        "label": "Payment method",
         "column": "payment_type"
       }
     ],
     "measures": [
       {
         "id": "payment_value",
-        "label": "支付金额",
+        "label": "Payment value",
         "format": "money",
         "expr": {
           "sum": "payment_value"
@@ -27,7 +27,7 @@
       },
       {
         "id": "payments",
-        "label": "支付笔数",
+        "label": "Payments",
         "format": "count",
         "expr": {
           "sum": "payment_count"
@@ -35,7 +35,7 @@
       },
       {
         "id": "installment_payments",
-        "label": "分期支付笔数",
+        "label": "Installment payments",
         "format": "count",
         "expr": {
           "sum": "installment_payments"
@@ -43,7 +43,7 @@
       },
       {
         "id": "installment_share",
-        "label": "分期占比",
+        "label": "Installment share",
         "format": "percent",
         "expr": {
           "ratio": [
@@ -54,7 +54,7 @@
       },
       {
         "id": "avg_installments",
-        "label": "平均分期数",
+        "label": "Average installments",
         "format": "number",
         "expr": {
           "avg": "avg_installments"
@@ -73,24 +73,24 @@
   "pages": [
     {
       "id": "mix",
-      "title": "支付结构",
+      "title": "Payment mix",
       "widgets": [
         {
           "id": "w1",
           "kind": "kpi",
-          "title": "支付金额",
+          "title": "Payment value",
           "measure": "payment_value"
         },
         {
           "id": "w2",
           "kind": "kpi",
-          "title": "分期占比",
+          "title": "Installment share",
           "measure": "installment_share"
         },
         {
           "id": "w3",
           "kind": "breakdown",
-          "title": "各支付方式占比",
+          "title": "Payment method share",
           "measure": "payment_value",
           "by": "payment_type",
           "chart": "donut"
@@ -98,13 +98,13 @@
         {
           "id": "w4",
           "kind": "trend",
-          "title": "分期占比走势",
+          "title": "Installment share over time",
           "measure": "installment_share"
         },
         {
           "id": "w5",
           "kind": "table",
-          "title": "支付方式明细",
+          "title": "Payment method detail",
           "by": "payment_type",
           "measures": [
             "payment_value",
