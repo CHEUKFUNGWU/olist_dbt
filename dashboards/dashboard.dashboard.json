@@ -173,6 +173,12 @@
           "measure": "revenue"
         },
         {
+          "id": "w10",
+          "kind": "trend",
+          "title": "Monthly AOV",
+          "measure": "aov"
+        },
+        {
           "id": "w9",
           "kind": "trend",
           "title": "Monthly freight",
@@ -189,7 +195,7 @@
         {
           "id": "w7",
           "kind": "breakdown",
-          "title": "Lateness and review score",
+          "title": "Review score: on time vs late",
           "measure": "avg_review",
           "by": "is_late",
           "chart": "bars"

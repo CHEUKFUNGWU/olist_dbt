@@ -100,14 +100,14 @@
     "layout": "grid",
     "arrangement": "rail",
     "range": {
-      "from": "2018-10-17",
+      "from": "2016-09-01",
       "to": "2018-10-17"
     }
   },
   "pages": [
     {
       "id": "sellers",
-      "title": "Seller ranking",
+      "title": "All time, Sep 2016 – Oct 2018",
       "widgets": [
         {
           "id": "w1",
