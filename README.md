@@ -108,6 +108,29 @@ The marts follow Kimball's dimensional approach; the full write-up is in [docs/k
 - **Snapshot** `customers_snapshot` gives customer geography a Type 2 history; run `uv run dbt snapshot --profiles-dir .` to write it.
 - **Reconciliation tests** (`assert_fct_orders_row_count`, `assert_payment_total_reconciles`, `assert_items_value_reconciles`, `assert_dim_customers_row_count`, `assert_category_translation_joined`) are what prove the fan-out defences hold.
 
+## Dashboard feed (Parquet)
+
+Three models under `models/marts/exports/` publish the tables a dashboard needs as Parquet files, so the dashboard does not need the `.duckdb` file at all:
+
+| File | Content | Grain |
+|---|---|---|
+| `exports/fct_orders.parquet` | orders with delivery and payment measures | order |
+| `exports/monthly_revenue.parquet` | revenue by month and category | month + category |
+| `exports/delivery_sla.parquet` | delivery performance by month and state | month + state |
+
+They use dbt-duckdb's `external` materialization: dbt writes the file and leaves a view of the same name pointing at it, so `ref()` still works in dbt while a dashboard reads the file directly.
+
+Any tool that speaks DuckDB can read them, and so can pandas, Polars or Spark:
+
+```sql
+select month_start, sum(revenue) as revenue
+from 'exports/monthly_revenue.parquet'
+group by 1
+order by 1;
+```
+
+`exports/` is gitignored: the files are rebuilt by `dbt build` and should never be committed.
+
 ## Caveats
 
 - `database: olist` in the sources file must match the DuckDB file name `olist.duckdb`.

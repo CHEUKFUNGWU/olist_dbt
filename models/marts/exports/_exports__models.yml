@@ -1,0 +1,9 @@
+version: 2
+
+models:
+  - name: export_fct_orders
+    description: "Parquet feed of fct_orders for dashboard drill-down. One row per order."
+  - name: export_monthly_revenue
+    description: "Parquet feed of monthly revenue by category. Pre-aggregated, safe to chart directly."
+  - name: export_delivery_sla
+    description: "Parquet feed of delivery performance by month and state. Pre-aggregated."
