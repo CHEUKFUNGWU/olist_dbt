@@ -1,0 +1,13 @@
+[project]
+name = "olist-dbt"
+version = "1.0.0"
+description = "Olist dbt project: Kimball dimensional model on DuckDB"
+requires-python = ">=3.10"
+dependencies = [
+    "dbt-duckdb>=1.11.1,<1.12",
+]
+
+[tool.uv]
+# This is an application project, not a distributable package: uv creates the
+# environment and installs the dependencies without building the project itself.
+package = false

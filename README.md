@@ -22,26 +22,29 @@ Status: 22 models and 5 singular tests written and structurally checked. Not exe
 
 ## Running locally
 
+Python dependencies are managed with [uv](https://docs.astral.sh/uv/): packages and constraints live in `pyproject.toml`, exact versions in `uv.lock`. dbt packages are separate and still come from `packages.yml` via `dbt deps`.
+
 ```bash
-python3 -m venv .venv && source .venv/bin/activate
-pip install "dbt-duckdb>=1.8"
+# once
+brew install uv
 
 # 1. put the 9 Kaggle CSVs in data/ (keep the original file names)
 #    https://www.kaggle.com/datasets/olistbr/brazilian-ecommerce
 
-# 2. load them into DuckDB (needs the duckdb CLI, or use the Python fallback below)
-duckdb olist.duckdb < load/load_raw.sql
+# 2. create .venv and install dbt-duckdb plus duckdb
+uv sync
 
-# 3. install packages and build
-dbt deps --profiles-dir .
-dbt build --profiles-dir .
+# 3. load the CSVs into DuckDB
+uv run python -c "import duckdb; duckdb.connect('olist.duckdb').execute(open('load/load_raw.sql').read())"
+
+# 4. install dbt packages, then build
+uv run dbt deps --profiles-dir .
+uv run dbt build --profiles-dir .
 ```
 
-Without the duckdb CLI, replace step 2 with:
+`uv run` executes inside the project environment, so there is nothing to activate. If you want a shell in it anyway, use `source .venv/bin/activate`.
 
-```bash
-python -c "import duckdb; duckdb.connect('olist.duckdb').execute(open('load/load_raw.sql').read())"
-```
+Prefer plain pip? `pip install "dbt-duckdb>=1.11.1,<1.12"` installs the same dependency set, but you lose the lock file.
 
 ## What the loader prints
 
