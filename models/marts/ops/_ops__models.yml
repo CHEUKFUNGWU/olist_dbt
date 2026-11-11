@@ -13,8 +13,20 @@ models:
           - dbt_utils.expression_is_true:
               arguments:
                 expression: ">= 1"
+      - name: delivered_orders
+        description: "Delivered orders in the cell. Denominator of late_rate."
+        data_tests:
+          - dbt_utils.expression_is_true:
+              arguments:
+                expression: "<= order_count"
+      - name: late_orders
+        description: "Delivered orders that arrived after the promised date. Numerator of late_rate; kept as a column so the rate can be re-aggregated correctly."
+        data_tests:
+          - dbt_utils.expression_is_true:
+              arguments:
+                expression: "<= delivered_orders"
       - name: late_rate
-        description: "Share of delivered orders that were late, 0-1."
+        description: "late_orders / delivered_orders. Never average this across rows; sum the two components and divide."
         data_tests:
           - dbt_utils.expression_is_true:
               arguments:

@@ -1,0 +1,20 @@
+version: 2
+
+models:
+  - name: fct_orders_customer_geography
+    description: "One row per order, with the customer state from dim_customers (person level) next to the state recorded on the order itself (from the customers snapshot, which is keyed by customer_id). Answers where an order was shipped, which dim_customers cannot."
+    columns:
+      - name: order_id
+        description: "Degenerate dimension, one row per order."
+        data_tests: [unique, not_null]
+      - name: person_state
+        description: "State from dim_customers: the person's current state, the value every state rollup in the marts uses."
+        data_tests: [not_null]
+      - name: order_state
+        description: "State recorded against this order's customer_id in the snapshot. Null only if the customer is missing from the snapshot."
+        data_tests: [not_null]
+      - name: order_state_recorded_at
+        description: "When the snapshot first recorded that state. The source has no change timestamp, so this is a run time, not a business date."
+        data_tests: [not_null]
+      - name: state_differs_from_person
+        description: "True when the order-level state and the person-level state disagree. 43 of 99,441 orders when measured."
