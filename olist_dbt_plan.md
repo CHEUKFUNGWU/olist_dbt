@@ -4,13 +4,16 @@ Goal: turn the Kaggle Brazilian E-Commerce Public Dataset by Olist (9 CSVs) into
 
 All row counts below were measured against the downloaded CSVs, not estimated.
 
+This plan was written before the build. Where the project outgrew it, the affected section now says so inline; §1 records the three items that moved from out of scope to delivered.
+
 ---
 
 ## 0. At a glance
 
 - **Layers**: sources -> staging (view) -> intermediate (view) -> marts (table)
-- **Core marts**: `dim_customers`, `dim_products`, `dim_sellers`, `dim_dates`, `fct_orders`, `fct_order_items`
-- **Aggregates**: `mart_finance__monthly_revenue`, `mart_ops__delivery_sla`
+- **Core marts**: `dim_customers`, `dim_products`, `dim_sellers`, `dim_dates`, `fct_orders`, `fct_order_items`, `fct_payments`
+- **Aggregates**: `mart_finance__monthly_revenue`, `mart_finance__payment_mix`, `mart_ops__delivery_sla`, `mart_seller__performance`, `mart_cx__review_delivery`
+- **Also shipped**: Parquet exports for the dashboard, a Type 2 snapshot, and a metric dictionary
 - **Three data traps to handle first**
   1. `customer_id` != `customer_unique_id`: 99,441 order-level ids map to 96,096 people
   2. `order_items` x `order_payments` double fan-out: the worst order is 21 item rows and 29 payments, which joins to 609 rows
@@ -24,16 +27,24 @@ All row counts below were measured against the downloaded CSVs, not estimated.
 
 **In scope**
 - Land the 9 CSVs in `raw.olist` and declare them as sources
-- Build staging -> intermediate -> marts, 22 models
+- Build staging -> intermediate -> marts, 29 models
 - Data tests, unit tests and contracts, with primary key uniqueness covered everywhere it matters
 - Separate dev and prod schemas, slim CI with state selection
 - Documentation: every mart and every key column described, doc blocks reused
 
-**Out of scope for now**
-- Semantic Layer metric definitions (after the marts settle)
-- Dashboards (validate with `dbt show` or a notebook first)
+**Out of scope in the first draft, since delivered**
+
+The draft held these back until the marts settled. All three landed later; each row records where it lives and what is still unfinished.
+
+| Item | Status now | Where it lives |
+|---|---|---|
+| Semantic Layer | Drafted, not active | `docs/semantic_layer_draft.yml`, kept outside `models/` because MetricFlow needs a real `DATE` time dimension and the facts carry integer role-playing keys only. `docs/metric_dictionary.md` is the hand-maintained version that actually ships |
+| Dashboards | Data feed delivered | `export_fct_orders`, `export_monthly_revenue` and `export_delivery_sla` write Parquet into `exports/`; the dashboard itself is outside the repo |
+| Snapshots | Built and green | `snapshots/customers_snapshot.sql`, Type 2 on customer geography. The extract is static and has no natural SCD2 case, so one customer city is edited by hand to prove the mechanism |
+
+**Still out of scope**
 - Streaming ingestion
-- Snapshots: Olist is a static historical extract, so there is no SCD2 case to track
+- Incremental models: the DuckDB load rebuilds in about 14 seconds, so incremental strategies would be practice for its own sake
 
 ---
 
@@ -536,8 +547,8 @@ Run the row-count and amount checks at the end of each phase rather than saving 
 **Open decisions**
 
 - Warehouse: DuckDB locally today; BigQuery or Snowflake would add `dbt clone` and full incremental strategies
-- Whether to add a Semantic Layer metric layer
-- Whether to publish dashboards, which decides whether exposures are worth declaring
+- Semantic Layer: drafted in `docs/semantic_layer_draft.yml`. The blocker is a `DATE` time dimension on the facts, not the modelling
+- Whether to declare exposures: the dashboard reads `exports/*.parquet` directly, so nothing links that report back to these models
 - Whether a genuinely incremental source is needed for the practice to be realistic
 
 ---
@@ -553,5 +564,5 @@ What changed from the first draft of this plan:
 - Unknown member: `dim_dates` has `date_key = 0` dated 1900-01-01. The 2,965 orders without a delivery date use it, so fact foreign keys are never null.
 - Degenerate dimensions: `order_id` and `order_item_id` stay in the facts without their own dimension.
 - Star, not snowflake: category attributes live inside `dim_products`; latitude and longitude live inside `dim_customers` and `dim_sellers`.
-- Bus matrix and the four-step design record are in the design doc, along with the deliberate deviations (derived attributes in dimensions, no payments or reviews facts yet, no Type 2 history).
+- Bus matrix and the four-step design record are in the design doc, along with the deliberate deviations (derived attributes in dimensions, no review-grain fact yet, Type 2 history in a snapshot rather than in the marts).
 
