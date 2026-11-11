@@ -45,13 +45,20 @@ Business questions mapped to the model that answers them. A new model is justifi
 | Which orders are late, with drill-down | order | `fct_orders` | `fct_orders`, exported as Parquet |
 | Who is a repeat customer, and what they are worth | customer | `dim_customers` | `dim_customers` |
 
-**Worth building**
+**Built from this matrix**
 
-| Question | Grain | Source | Why a new model, not a filter |
+| Question | Grain | Source | Model |
 |---|---|---|---|
-| Which sellers need intervention | seller | `fct_order_items`, `fct_orders`, `int_sellers__order_rollup` | New grain: ranks 1,271 sellers with 10+ orders; 71 sit above a 20% late rate, the worst at 64.29% |
-| Does lateness drive bad reviews | month × is_late | `fct_orders`, `dim_dates` | Combines two processes at one grain. Late orders average 2.57 stars with 54.0% scoring 2 or below; on-time orders average 4.30 with 9.2% |
-| Payment method and installment mix | month × payment_type | `fct_payments`, `dim_dates` | Payments are a separate process from items; the shaper of cash flow is not visible in either existing mart |
+| Which sellers need intervention | seller | `fct_order_items`, `fct_orders`, `dim_sellers` | `mart_seller__performance` |
+| Does lateness drive bad reviews | month × is_late | `fct_orders`, `dim_dates` | `mart_cx__review_delivery` |
+| Payment method and installment mix | month × payment_type | `fct_payments`, `dim_dates` | `mart_finance__payment_mix` |
+
+**Next candidates**
+
+| Question | Grain | What it would take |
+|---|---|---|
+| Which products and sellers draw bad reviews | review | A review-grain fact: reviews are currently aggregated to order grain, so product and seller attribution is approximate |
+| Do first-time buyers come back | first order month × customer | A cohort model: first order month per customer, then activity by month offset |
 
 **Deliberately not building**
 

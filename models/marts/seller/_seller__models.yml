@@ -1,0 +1,37 @@
+version: 2
+
+models:
+  - name: mart_seller__performance
+    description: "Seller scorecard, one row per seller (3,095 rows). Ranks sellers by late rate so ops can pick who to intervene with. Review scores are attributed to every seller on the order."
+    columns:
+      - name: seller_key
+        description: "Surrogate key to dim_sellers. Unique and not null."
+        data_tests: [unique, not_null]
+      - name: order_count
+        description: "Distinct orders containing this seller. Zero for a seller with no orders."
+      - name: item_revenue
+        description: "Sum of item prices sold by this seller, freight excluded. Additive."
+      - name: late_rate
+        description: "Late delivered orders over delivered orders. Null when nothing was delivered."
+        data_tests:
+          - dbt_utils.expression_is_true:
+              arguments:
+                expression: ">= 0 and late_rate <= 1"
+      - name: cancel_rate
+        description: "Canceled and unavailable orders over all orders."
+        data_tests:
+          - dbt_utils.expression_is_true:
+              arguments:
+                expression: ">= 0 and cancel_rate <= 1"
+      - name: avg_review_score
+        description: "Average review score of the orders containing this seller. Non-additive."
+        data_tests:
+          - dbt_utils.expression_is_true:
+              arguments:
+                expression: "between 1 and 5"
+      - name: low_score_rate
+        description: "Share of reviewed orders scoring 2 or below."
+        data_tests:
+          - dbt_utils.expression_is_true:
+              arguments:
+                expression: ">= 0 and low_score_rate <= 1"

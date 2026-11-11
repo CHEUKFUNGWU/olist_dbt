@@ -16,7 +16,7 @@ Status: 22 models and 5 singular tests written and structurally checked. Not exe
 ├── models/
 │   ├── staging/olist/              # 8 models, 1:1 with source tables
 │   ├── intermediate/               # 6 models, aggregated to the target grain
-│   └── marts/                      # core dims and facts + finance/ops aggregates
+│   └── marts/                      # core dims and facts, finance/ops/seller/cx aggregates, parquet exports
 ├── snapshots/                      # Type 2 history for customer geography
 └── tests/                          # singular assertions and reconciliation checks
 ```
@@ -101,7 +101,7 @@ The marts follow Kimball's dimensional approach; the full write-up is in [docs/k
 
 ## Verification
 
-`uv run dbt build --profiles-dir .` runs 23 models, 162 data tests, 1 unit test and 1 snapshot, and completes green.
+`uv run dbt build --profiles-dir .` builds every model, runs the full test suite, the unit test and the snapshot, and completes green.
 
 - **Contracts** are enforced on `dim_customers`, `fct_orders`, `fct_order_items` and `fct_payments`: every column is declared with its data type, and each model carries a `primary_key` constraint. A column rename or type drift fails the build.
 - **Unit test** `is_late_covers_late_on_time_and_undelivered` pins three fixtures against `int_orders__delivery`: late, on time, and never delivered.

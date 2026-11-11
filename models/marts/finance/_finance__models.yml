@@ -19,3 +19,38 @@ models:
           - dbt_utils.expression_is_true:
               arguments:
                 expression: ">= 1"
+
+  - name: mart_finance__payment_mix
+    description: "Cash flow shape, one row per month and payment type. Shows how people pay and how much of it is paid in installments."
+    data_tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns: ['month_start', 'payment_type']
+    columns:
+      - name: month_start
+        description: "Calendar month, from dim_dates via the proxy order date."
+        data_tests: [not_null]
+      - name: payment_type
+        description: "credit_card, boleto, voucher, debit_card or not_defined."
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: ['credit_card', 'boleto', 'voucher', 'debit_card', 'not_defined']
+      - name: payment_value
+        description: "Total paid with this method in this month. Additive."
+        data_tests:
+          - dbt_utils.expression_is_true:
+              arguments:
+                expression: ">= 0"
+      - name: pct_of_month
+        description: "Share of the month's payment value. Should sum to 100 per month."
+        data_tests:
+          - dbt_utils.expression_is_true:
+              arguments:
+                expression: ">= 0 and pct_of_month <= 100"
+      - name: pct_installments
+        description: "Share of payments made in more than one installment, in percent."
+        data_tests:
+          - dbt_utils.expression_is_true:
+              arguments:
+                expression: "between 0 and 100"

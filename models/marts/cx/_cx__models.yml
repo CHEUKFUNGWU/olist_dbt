@@ -1,0 +1,34 @@
+version: 2
+
+models:
+  - name: mart_cx__review_delivery
+    description: "Review outcome against delivery lateness, one row per month and whether the order was late. Only delivered orders appear: undelivered orders have no lateness."
+    data_tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns: ['month_start', 'is_late']
+    columns:
+      - name: month_start
+        description: "Calendar month of the purchase, from dim_dates."
+        data_tests: [not_null]
+      - name: is_late
+        description: "Whether the order was delivered after the promised date."
+        data_tests: [not_null]
+      - name: orders
+        description: "Delivered orders in this cell."
+        data_tests:
+          - dbt_utils.expression_is_true:
+              arguments:
+                expression: "> 0"
+      - name: avg_review_score
+        description: "Average review score. Null when no order in the cell was reviewed."
+        data_tests:
+          - dbt_utils.expression_is_true:
+              arguments:
+                expression: "is null or (avg_review_score between 1 and 5)"
+      - name: low_score_rate
+        description: "Share of reviewed orders scoring 2 or below."
+        data_tests:
+          - dbt_utils.expression_is_true:
+              arguments:
+                expression: ">= 0 and low_score_rate <= 1"
