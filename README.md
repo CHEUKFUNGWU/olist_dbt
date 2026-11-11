@@ -144,13 +144,13 @@ Two feeds are deliberately wider than the table they copy, because a dashboard c
 
 ## Dashboards
 
-Three dashboards read the feeds directly; the definitions live in `dashboards/` and hold no data of their own.
+Three dashboards read the feeds directly; the definitions live in `dashboards/` and hold no data of their own. The file names come from the dashboard tool and must not be renamed: the app finds a dashboard by its path, so a rename leaves the card pointing at nothing. The readable name is the dashboard's title.
 
 | File | Source feed | Answers |
 |---|---|---|
-| `dashboards/01_ops_overview.dashboard.json` | `fct_orders.parquet` | revenue and orders over time, late rate by state, whether lateness drags the review score |
-| `dashboards/02_payment_mix.dashboard.json` | `payment_mix.parquet` | how people pay, and how much of it is in installments |
-| `dashboards/03_seller_performance.dashboard.json` | `seller_performance.parquet` | which sellers carry the late and cancelled orders |
+| `dashboards/dashboard.dashboard.json` | `fct_orders.parquet` | revenue and orders over time, late rate by state, whether lateness drags the review score |
+| `dashboards/dashboard-2.dashboard.json` | `payment_mix.parquet` | how people pay, and how much of it is in installments |
+| `dashboards/dashboard-3.dashboard.json` | `seller_performance.parquet` | which sellers carry the late and cancelled orders |
 
 One dashboard reads one file, so the six analyses split across grains. Row-level order drill-down is the exception: a dashboard widget aggregates, so inspecting a single order means querying `exports/fct_orders.parquet` directly.
 
