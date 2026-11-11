@@ -17,6 +17,7 @@ Status: 32 models, 180 data tests, 1 unit test and 1 snapshot, green end to end.
 │   ├── staging/olist/              # 8 models, 1:1 with source tables
 │   ├── intermediate/               # 6 models, aggregated to the target grain
 │   └── marts/                      # core dims and facts, finance/ops/seller/cx aggregates, parquet exports
+├── dashboards/                     # dashboard definitions over the Parquet feeds
 ├── snapshots/                      # Type 2 history for customer geography
 └── tests/                          # singular assertions and reconciliation checks
 ```
@@ -134,7 +135,24 @@ group by 1
 order by 1;
 ```
 
+Two feeds are deliberately wider than the table they copy, because a dashboard cannot join dimensions itself:
+
+- `export_fct_orders` adds a real `order_date` (from `dim_dates`), `customer_state` (from `dim_customers`) and four 0/1 flags (`late_flag`, `delivered_flag`, `reviewed_flag`, `low_score_flag`) so rates can be summed instead of averaged
+- `export_seller_performance` adds `as_of_date`, the latest order date in the load. The scorecard has no time dimension, so this is a single as-of point: filter on it, never trend across it
+
 `exports/` is gitignored: the files are rebuilt by `dbt build` and should never be committed.
+
+## Dashboards
+
+Three dashboards read the feeds directly; the definitions live in `dashboards/` and hold no data of their own.
+
+| File | Source feed | Answers |
+|---|---|---|
+| `dashboards/01_ops_overview.dashboard.json` | `fct_orders.parquet` | revenue and orders over time, late rate by state, whether lateness drags the review score |
+| `dashboards/02_payment_mix.dashboard.json` | `payment_mix.parquet` | how people pay, and how much of it is in installments |
+| `dashboards/03_seller_performance.dashboard.json` | `seller_performance.parquet` | which sellers carry the late and cancelled orders |
+
+One dashboard reads one file, so the six analyses split across grains. Row-level order drill-down is the exception: a dashboard widget aggregates, so inspecting a single order means querying `exports/fct_orders.parquet` directly.
 
 ## Caveats
 

@@ -1,0 +1,198 @@
+{
+  "schema": 1,
+  "title": "经营与交付总览",
+  "source": {
+    "kind": "file",
+    "path": "exports/fct_orders.parquet"
+  },
+  "model": {
+    "date": "order_date",
+    "currency": "BRL",
+    "unit": "one",
+    "dimensions": [
+      {
+        "id": "customer_state",
+        "label": "州",
+        "column": "customer_state"
+      },
+      {
+        "id": "order_status",
+        "label": "订单状态",
+        "column": "order_status"
+      },
+      {
+        "id": "is_late",
+        "label": "是否迟到",
+        "column": "is_late"
+      }
+    ],
+    "measures": [
+      {
+        "id": "revenue",
+        "label": "收入",
+        "format": "money",
+        "expr": {
+          "sum": "payment_total"
+        }
+      },
+      {
+        "id": "orders",
+        "label": "订单数",
+        "format": "count",
+        "expr": {
+          "count": true
+        }
+      },
+      {
+        "id": "aov",
+        "label": "客单价",
+        "format": "money",
+        "expr": {
+          "ratio": [
+            "revenue",
+            "orders"
+          ]
+        }
+      },
+      {
+        "id": "delivered_orders",
+        "label": "已送达订单",
+        "format": "count",
+        "expr": {
+          "sum": "delivered_flag"
+        }
+      },
+      {
+        "id": "late_orders",
+        "label": "迟到订单",
+        "format": "count",
+        "expr": {
+          "sum": "late_flag"
+        }
+      },
+      {
+        "id": "late_rate",
+        "label": "迟到率",
+        "format": "percent",
+        "expr": {
+          "ratio": [
+            "late_orders",
+            "delivered_orders"
+          ]
+        },
+        "good": "down"
+      },
+      {
+        "id": "reviewed_orders",
+        "label": "有评论订单",
+        "format": "count",
+        "expr": {
+          "sum": "reviewed_flag"
+        }
+      },
+      {
+        "id": "low_score_orders",
+        "label": "差评订单",
+        "format": "count",
+        "expr": {
+          "sum": "low_score_flag"
+        }
+      },
+      {
+        "id": "low_score_rate",
+        "label": "差评率",
+        "format": "percent",
+        "expr": {
+          "ratio": [
+            "low_score_orders",
+            "reviewed_orders"
+          ]
+        },
+        "good": "down"
+      },
+      {
+        "id": "avg_review",
+        "label": "平均评分",
+        "format": "number",
+        "expr": {
+          "avg": "latest_review_score"
+        },
+        "good": "up"
+      }
+    ]
+  },
+  "view": {
+    "layout": "grid",
+    "arrangement": "classic",
+    "range": {
+      "from": "2016-09-01",
+      "to": "2018-10-31"
+    }
+  },
+  "pages": [
+    {
+      "id": "overview",
+      "title": "经营总览",
+      "widgets": [
+        {
+          "id": "w1",
+          "kind": "kpi",
+          "title": "收入",
+          "measure": "revenue"
+        },
+        {
+          "id": "w2",
+          "kind": "kpi",
+          "title": "订单数",
+          "measure": "orders"
+        },
+        {
+          "id": "w3",
+          "kind": "kpi",
+          "title": "迟到率",
+          "measure": "late_rate"
+        },
+        {
+          "id": "w4",
+          "kind": "kpi",
+          "title": "平均评分",
+          "measure": "avg_review"
+        },
+        {
+          "id": "w5",
+          "kind": "trend",
+          "title": "月度收入",
+          "measure": "revenue"
+        },
+        {
+          "id": "w6",
+          "kind": "breakdown",
+          "title": "各州迟到率",
+          "measure": "late_rate",
+          "by": "customer_state",
+          "chart": "bars"
+        },
+        {
+          "id": "w7",
+          "kind": "breakdown",
+          "title": "迟到与评分",
+          "measure": "avg_review",
+          "by": "is_late",
+          "chart": "bars"
+        },
+        {
+          "id": "w8",
+          "kind": "table",
+          "title": "各州明细",
+          "by": "customer_state",
+          "measures": [
+            "orders",
+            "revenue",
+            "late_rate",
+            "avg_review"
+          ]
+        }
+      ]
+    }
+  ]
+}
