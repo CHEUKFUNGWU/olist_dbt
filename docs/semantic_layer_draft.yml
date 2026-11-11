@@ -1,0 +1,174 @@
+# Semantic Layer draft. Deliberately outside models/ so it cannot be picked up by
+# `dbt build` while the syntax is still being proven. Move it into models/ once it
+# parses cleanly and you have an environment that can query it (dbt Cloud, or the
+# dbt-metricflow CLI).
+#
+# Prerequisite: a real date column on the facts. Both fct_orders and fct_order_items
+# currently carry only integer role-playing keys (YYYYMMDD), and a MetricFlow time
+# dimension needs a DATE. The cheapest fix is to add one column:
+#
+#   cast(purchased_at as date) as order_date        -- in fct_orders
+#   cast(o.purchased_at as date) as order_date      -- in fct_order_items
+#
+# The definitions below assume those columns exist.
+
+semantic_models:
+
+  - name: order_items
+    description: "Order lines. Every measure here is additive at the item grain."
+    model: ref('fct_order_items')
+    defaults:
+      agg_time_dimension: order_date
+
+    entities:
+      - name: order
+        type: primary
+        expr: order_id
+      - name: customer
+        type: foreign
+        expr: customer_key
+      - name: product
+        type: foreign
+        expr: product_key
+      - name: seller
+        type: foreign
+        expr: seller_key
+
+    dimensions:
+      - name: order_date
+        description: "Purchase date, from the role-playing key on the fact."
+        type: time
+        type_params:
+          time_granularity: day
+        expr: order_date
+
+    measures:
+      - name: item_revenue
+        description: "Product prices only, freight excluded. See docs/metric_dictionary.md."
+        agg: sum
+        expr: price
+      - name: freight_value
+        agg: sum
+        expr: freight_value
+      - name: item_quantity
+        agg: sum
+        expr: quantity
+      - name: orders_with_items
+        agg: count_distinct
+        expr: order_id
+      - name: buying_customers
+        agg: count_distinct
+        expr: customer_key
+
+  - name: orders
+    description: "One row per order. Delivery measures live here."
+    model: ref('fct_orders')
+    defaults:
+      agg_time_dimension: order_date
+
+    entities:
+      - name: order
+        type: primary
+        expr: order_id
+      - name: customer
+        type: foreign
+        expr: customer_key
+
+    dimensions:
+      - name: order_date
+        type: time
+        type_params:
+          time_granularity: day
+        expr: order_date
+      - name: order_status
+        type: categorical
+        expr: order_status
+
+    measures:
+      - name: order_count
+        agg: count_distinct
+        expr: order_id
+      - name: delivered_orders
+        description: "Denominator for late rate: orders with a real delivery date."
+        agg: sum
+        expr: "case when is_delivered then 1 else 0 end"
+      - name: late_orders
+        agg: sum
+        expr: "case when is_delivered and is_late then 1 else 0 end"
+      - name: payment_total
+        agg: sum
+        expr: payment_total
+      - name: delivery_days_sum
+        description: "Non-additive. Used only through the average metric below."
+        agg: sum
+        expr: delivery_days
+
+metrics:
+
+  # Simple metrics: one measure each, names kept distinct from the measure names
+  # so a reader never has to guess which namespace a name belongs to.
+
+  - name: revenue
+    description: "sum(price) on order lines, freight excluded."
+    type: simple
+    type_params:
+      measure: item_revenue
+
+  - name: freight
+    type: simple
+    type_params:
+      measure: freight_value
+
+  - name: orders
+    description: "Distinct orders. Never count item rows here."
+    type: simple
+    type_params:
+      measure: order_count
+
+  - name: customers
+    type: simple
+    type_params:
+      measure: buying_customers
+
+  - name: payment_total_amount
+    type: simple
+    type_params:
+      measure: payment_total
+
+  - name: delivered_order_count
+    type: simple
+    type_params:
+      measure: delivered_orders
+
+  - name: late_order_count
+    type: simple
+    type_params:
+      measure: late_orders
+
+  - name: delivery_days_total
+    type: simple
+    type_params:
+      measure: delivery_days_sum
+
+  # Ratio metrics: numerator and denominator are metrics, never a precomputed ratio.
+
+  - name: average_order_value
+    description: "Payment total divided by orders. Never an average of averages."
+    type: ratio
+    type_params:
+      numerator: payment_total_amount
+      denominator: orders
+
+  - name: late_rate
+    description: "Late delivered orders over delivered orders. Undelivered orders never enter the denominator."
+    type: ratio
+    type_params:
+      numerator: late_order_count
+      denominator: delivered_order_count
+
+  - name: avg_delivery_days
+    description: "Only meaningful as an average; delivery_days is not additive."
+    type: ratio
+    type_params:
+      numerator: delivery_days_total
+      denominator: delivered_order_count
