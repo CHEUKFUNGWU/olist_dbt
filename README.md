@@ -90,7 +90,7 @@ Prefer plain pip? `pip install "dbt-duckdb>=1.11.1,<1.12"` installs the same dep
 
 ## Dimensional model (Kimball)
 
-The marts follow Kimball's dimensional approach; the full write-up is in [docs/kimball_model.md](docs/kimball_model.md).
+The marts follow Kimball's dimensional approach; the full write-up is in [docs/kimball_model.md](docs/kimball_model.md) and the entity relationships are drawn in [docs/erd.md](docs/erd.md).
 
 - Every dimension has a single-column surrogate key (`customer_key`, `product_key`, `seller_key`, `date_key`) as its primary key, with the source identifier kept as an alternate key.
 - `dim_dates` carries a numeric `date_key` (YYYYMMDD) and an unknown member at key 0, so lifecycle events that have not happened map to a row instead of null.
