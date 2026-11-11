@@ -6,3 +6,6 @@ olist.duckdb
 olist.duckdb.wal
 data/
 .yobot/
+.DS_Store
+.user.yml
+.vscode/
