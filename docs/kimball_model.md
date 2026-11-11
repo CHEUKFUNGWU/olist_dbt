@@ -69,6 +69,24 @@ Business questions mapped to the model that answers them. A new model is justifi
 | Review text sentiment | No text tooling here, and free text carries personal data |
 | Seller cancellation rate | Belongs inside the seller scorecard above, not in its own table |
 
+### 2.3 Detailed implementation bus matrix
+
+The bus matrix says which business processes exist. This one pins every physical table to a
+grain sentence, its facts and their additivity, which is what an ETL developer or a reviewer
+actually needs. A row here is a table, not a process.
+
+| Table | One row is | Facts, by additivity | Degenerate dimensions |
+|---|---|---|---|
+| `fct_order_items` | one order line | additive: `price`, `freight_value`, `quantity` | `order_id`, `order_item_id` |
+| `fct_orders` | one order | additive: `item_count`, `items_value`, `freight_value`, `payment_total`. Non-additive: `delivery_days`, `days_to_approve`, `days_to_carrier`, `days_late`, `latest_review_score` | `order_id` |
+| `fct_payments` | one payment against an order | additive: `payment_value`. Semi-additive: `payment_installments` | `order_id` |
+| `fct_orders_customer_geography` | one order, with two states attached | none: attributes only, no measures | `order_id` |
+
+The marts are aggregates over these tables. Every rate a mart publishes ships with its
+numerator and denominator (`late_orders` alongside `delivered_orders`, not only `late_rate`),
+so the ratio can be rebuilt after summing. Averaging a stored rate across months is the error
+that rule prevents.
+
 ## 3. Star schemas
 
 ```mermaid
@@ -135,6 +153,47 @@ Entity dimensions have no unknown member because the data was checked: all 99,44
 
 `dim_customers` and `dim_sellers` also carry measures (order count, revenue, late rate). Kimball allows derived attributes in a dimension when every query needs them, provided they are refreshed on each build and documented. That is the position taken here; the alternative, a separate seller performance fact, is noted in section 7.
 
+### 5.1 Design worksheets
+
+One row per attribute, with the SCD policy decided at design time. This is the first step of a
+source-to-target mapping: it says what each column is, where it comes from, and what happens
+when the source value changes.
+
+**`dim_customers`**
+
+| Attribute | Type | SCD policy | Source |
+|---|---|---|---|
+| `customer_key` | surrogate, md5 of `customer_unique_id` | new version only when geography changes, in the snapshot | built |
+| `customer_unique_id` | durable key | never changes, identifies the person across orders | source |
+| `state`, `city`, `zip_code_prefix` | attribute | Type 2 in `snapshots/customers_snapshot.sql`, Type 1 in this table | source |
+| `latitude`, `longitude` | attribute | Type 1 | geolocation aggregate |
+| `first_order_at`, `last_order_at`, `order_count`, `lifetime_value`, `avg_order_value`, `avg_review_score` | derived attribute | Type 1, recomputed every build | derived from facts |
+| `customer_segment` | derived attribute | Type 1, recomputed | derived from `order_count` |
+
+**`dim_products`**
+
+| Attribute | Type | SCD policy | Source |
+|---|---|---|---|
+| `product_key` | surrogate, md5 of `product_id` | stable | built |
+| `product_id` | durable key | never changes | source |
+| `category_pt`, `category_en` | attribute | Type 1, `category_en` resolved through the translation seed | source plus seed |
+| `weight_g`, `length_cm`, `height_cm`, `width_cm`, `volume_cm3` | attribute | Type 1 | source |
+
+**`dim_sellers`**
+
+| Attribute | Type | SCD policy | Source |
+|---|---|---|---|
+| `seller_key` | surrogate, md5 of `seller_id` | stable | built |
+| `seller_id` | durable key | never changes | source |
+| `city`, `state`, `zip_code_prefix` | attribute | Type 1 | source |
+| `latitude`, `longitude` | attribute | Type 1 | geolocation aggregate |
+
+**`dim_dates`**
+
+Every calendar attribute (day, month, quarter, weekday name, weekend flag) is Type 0: it never
+changes once loaded. The key is a smart key, `yyyymmdd`, which Kimball exempts from the
+surrogate-key rule, plus one unknown member at `date_key = 0`.
+
 ---
 
 ## 6. Fact specifications
@@ -158,6 +217,14 @@ Entity dimensions have no unknown member because the data was checked: all 99,44
 
 Duration and score measures are semi- or non-additive: summing `delivery_days` across orders is meaningless, averaging is not. This is stated in the column descriptions.
 
+**`fct_orders_customer_geography`, order-grain view**
+
+- Grain: one row per order
+- Why it exists: `dim_customers` is one row per person, so any state rollup answers "where does this person live now", not "where was this order shipped"
+- `person_state` comes from `dim_customers`; `order_state` comes from the customers snapshot keyed by `customer_id`, which in Olist is order-scoped
+- `state_differs_from_person` flags the orders where the two disagree: 43 of 99,441 when measured
+- Type 2 caveat: the source has no change timestamp, so a snapshot version's `dbt_valid_from` is the run that first saw the row, not a business date. The view takes the earliest recorded version and cannot reconstruct a state that changed before the snapshot existed
+
 ---
 
 ## 7. Deliberate deviations and next steps
@@ -166,4 +233,5 @@ Duration and score measures are semi- or non-additive: summing `delivery_days` a
 2. **Reviews are the one process without a fact table.** `fct_payments` now exists at `order_id` + `payment_sequential`; reviews would sit at `review_id` with the same four dimensions. Nothing downstream needs that grain yet, so it stays in the bus matrix as unbuilt rather than half-built.
 3. **No junk dimension.** Low-cardinality flags (`is_late`, `is_delivered`) stay in the fact. A junk dimension combining payment type, status and flags would be the textbook move once three or more such flags accumulate.
 4. **Type 2 history lives in a snapshot, not in the mart.** `dim_customers` is Type 1 and overwritten on each build; `snapshots/customers_snapshot.sql` keeps the version history with `dbt_valid_from` and `dbt_valid_to`. Joining a fact to the snapshot on `customer_id` and the order timestamp answers "which state was this customer in when they ordered".
-5. **Casing and naming.** Model names stay plural (`dim_customers`, `fct_orders`) for consistency with the existing project; Kimball's own convention is singular (`dim_customer`).
+5. **Geography is approximated at person level.** `mart_ops__delivery_sla` and the order feed group by the state on `dim_customers`, one row per person. 43 of 99,441 orders carry a different state on the order itself than on the person, 0.043%, guarded by `assert_state_attribution_mismatch_bounded`. Repointing those marts at `fct_orders_customer_geography` would fix those 43 and is the next step if state-level reporting ever becomes material.
+6. **Casing and naming.** Model names stay plural (`dim_customers`, `fct_orders`) for consistency with the existing project; Kimball's own convention is singular (`dim_customer`).
