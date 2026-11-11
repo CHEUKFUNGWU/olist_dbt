@@ -122,3 +122,19 @@ models:
               arguments:
                 # renders as "late_rate is null or (late_rate >= 0 and late_rate <= 1)"
                 expression: "is null or (late_rate >= 0 and late_rate <= 1)"
+
+unit_tests:
+  - name: is_late_covers_late_on_time_and_undelivered
+    description: "Late, on time, and never delivered are three different outcomes; the boundary case sits at midnight."
+    model: int_orders__delivery
+    given:
+      - input: ref('stg_olist__orders')
+        rows:
+          - {order_id: a1, purchased_at: '2018-01-01 09:00:00', estimated_delivery_at: '2018-01-10 00:00:00', delivered_to_customer_at: '2018-01-11 10:00:00'}
+          - {order_id: a2, purchased_at: '2018-01-01 09:00:00', estimated_delivery_at: '2018-01-10 00:00:00', delivered_to_customer_at: '2018-01-09 23:59:00'}
+          - {order_id: a3, purchased_at: '2018-01-01 09:00:00', estimated_delivery_at: '2018-01-10 00:00:00', delivered_to_customer_at: null}
+    expect:
+      rows:
+        - {order_id: a1, is_delivered: true, is_late: true, days_late: 1}
+        - {order_id: a2, is_delivered: true, is_late: false, days_late: 0}
+        - {order_id: a3, is_delivered: false, is_late: null, days_late: null}

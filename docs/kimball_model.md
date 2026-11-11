@@ -91,7 +91,7 @@ Entity dimensions have no unknown member because the data was checked: all 99,44
 
 | Dimension | Grain | Descriptive attributes | SCD policy |
 |---|---|---|---|
-| `dim_customers` | one row per person (`customer_unique_id`) | city, state, zip, latitude, longitude, first and last order date, order count, one-time vs repeat | Type 1. A Type 2 version belongs in a snapshot when the business needs history of address changes |
+| `dim_customers` | one row per person (`customer_unique_id`) | city, state, zip, latitude, longitude, first and last order date, order count, one-time vs repeat | Type 1 in this table; Type 2 history is captured by `snapshots/customers_snapshot.sql`, a check-strategy snapshot on city, state and zip |
 | `dim_products` | one row per product | English and Portuguese category, weight, dimensions, volume | Type 1 |
 | `dim_sellers` | one row per seller | city, state, zip, latitude, longitude | Type 1 |
 | `dim_dates` | one row per calendar day plus the unknown member | year, quarter, month, month name, day of month, day of week, day name, weekend flag | static |
@@ -128,5 +128,5 @@ Duration and score measures are semi- or non-additive: summing `delivery_days` a
 1. **Measures in dimensions.** `order_count`, `lifetime_value`, `gross_revenue` and `late_rate` sit in the entity dimensions as derived attributes. A stricter star moves them into periodic snapshot facts (`fct_customer_monthly`, `fct_seller_monthly`). Worth doing if reporting demands period-over-period comparison.
 2. **No payments or reviews facts yet.** Both are clean transaction facts with their own grain (`order_id` + `payment_sequential`; `review_id`). The bus matrix marks them planned.
 3. **No junk dimension.** Low-cardinality flags (`is_late`, `is_delivered`) stay in the fact. A junk dimension combining payment type, status and flags would be the textbook move once three or more such flags accumulate.
-4. **Type 2 history is absent.** Addresses and categories are overwritten on each build. A snapshot-based Type 2 dimension is the next step if anyone asks "which state was this customer in when they ordered".
+4. **Type 2 history lives in a snapshot, not in the mart.** `dim_customers` is Type 1 and overwritten on each build; `snapshots/customers_snapshot.sql` keeps the version history with `dbt_valid_from` and `dbt_valid_to`. Joining a fact to the snapshot on `customer_id` and the order timestamp answers "which state was this customer in when they ordered".
 5. **Casing and naming.** Model names stay plural (`dim_customers`, `fct_orders`) for consistency with the existing project; Kimball's own convention is singular (`dim_customer`).

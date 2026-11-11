@@ -2,12 +2,20 @@ version: 2
 
 models:
   - name: fct_orders
+    config:
+      contract:
+        enforced: true
+    constraints:
+      - type: primary_key
+        columns: [order_id]
     description: "Accumulated snapshot fact, one row per order. Five role-playing date keys point at dim_dates; events that have not happened use the unknown member (0)."
     columns:
       - name: order_id
+        data_type: VARCHAR
         description: "Degenerate dimension and row key. Unique and not null."
         data_tests: [unique, not_null]
       - name: customer_key
+        data_type: VARCHAR
         description: "Foreign key to dim_customers."
         data_tests:
           - not_null
@@ -16,6 +24,7 @@ models:
                 to: ref('dim_customers')
                 field: customer_key
       - name: customer_id
+        data_type: VARCHAR
         description: "Order-level customer identifier, kept as a degenerate attribute for traceability."
         data_tests:
           - not_null
@@ -24,6 +33,7 @@ models:
                 to: ref('stg_olist__customers')
                 field: customer_id
       - name: order_date_key
+        data_type: INTEGER
         description: "Purchase date, role-playing dim_dates key. YYYYMMDD."
         data_tests:
           - not_null
@@ -32,6 +42,7 @@ models:
                 to: ref('dim_dates')
                 field: date_key
       - name: approved_date_key
+        data_type: INTEGER
         description: "Payment approval date, role-playing dim_dates key. 0 when not approved."
         data_tests:
           - not_null
@@ -40,6 +51,7 @@ models:
                 to: ref('dim_dates')
                 field: date_key
       - name: carrier_date_key
+        data_type: INTEGER
         description: "Handover to carrier date, role-playing dim_dates key. 0 when not handed over."
         data_tests:
           - not_null
@@ -48,6 +60,7 @@ models:
                 to: ref('dim_dates')
                 field: date_key
       - name: delivered_date_key
+        data_type: INTEGER
         description: "Delivery date, role-playing dim_dates key. 0 when not delivered."
         data_tests:
           - not_null
@@ -56,6 +69,7 @@ models:
                 to: ref('dim_dates')
                 field: date_key
       - name: estimated_date_key
+        data_type: INTEGER
         description: "Promised delivery date, role-playing dim_dates key. 0 when missing."
         data_tests:
           - not_null
@@ -64,12 +78,14 @@ models:
                 to: ref('dim_dates')
                 field: date_key
       - name: order_status
+        data_type: VARCHAR
         description: "Order status."
         data_tests:
           - accepted_values:
               arguments:
                 values: ['created', 'approved', 'invoiced', 'processing', 'shipped', 'delivered', 'canceled', 'unavailable']
       - name: payment_total
+        data_type: DECIMAL(38,2)
         description: "Total payment amount. Additive."
         data_tests:
           - not_null
@@ -77,6 +93,7 @@ models:
               arguments:
                 expression: ">= 0"
       - name: items_value
+        data_type: DECIMAL(38,2)
         description: "Total item value. Additive."
         data_tests:
           - not_null
@@ -84,16 +101,60 @@ models:
               arguments:
                 expression: ">= 0"
       - name: delivery_days
+        data_type: BIGINT
         description: "Days from purchase to delivery. Non-additive duration."
       - name: is_late
+        data_type: BOOLEAN
         description: "Whether delivery was late. Null when not delivered."
         data_tests:
           - dbt_utils.expression_is_true:
               arguments:
                 # renders as "is_late is null or is_delivered"
                 expression: "is null or is_delivered"
+      - name: is_delivered
+        data_type: BOOLEAN
+        description: "Whether the order reached the customer."
+      - name: estimated_days
+        data_type: BIGINT
+        description: "Promised days from purchase to delivery. Non-additive."
+      - name: days_late
+        data_type: BIGINT
+        description: "Days beyond the promised date. 0 when on time, null when not delivered."
+      - name: item_count
+        data_type: BIGINT
+        description: "Number of item rows. Additive."
+      - name: distinct_products
+        data_type: BIGINT
+        description: "Distinct products in the order."
+      - name: distinct_sellers
+        data_type: BIGINT
+        description: "Distinct sellers in the order."
+      - name: freight_value
+        data_type: DECIMAL(38,2)
+        description: "Total freight. Additive."
+      - name: payment_count
+        data_type: BIGINT
+        description: "Number of payment rows."
+      - name: max_installments
+        data_type: INTEGER
+        description: "Largest installment count among the payments."
+      - name: payment_types
+        data_type: VARCHAR
+        description: "Comma separated payment methods on the order."
+      - name: latest_review_score
+        data_type: INTEGER
+        description: "Score of the most recent review. Non-additive."
+      - name: review_count
+        data_type: BIGINT
+        description: "Number of reviews on the order."
 
   - name: fct_order_items
+    config:
+      contract:
+        enforced: true
+    constraints:
+      - type: primary_key
+        columns: [order_item_key]
     description: "Transaction fact, one row per order line. Surrogate dimension keys, two role-playing date keys, and order_id/order_item_id as degenerate dimensions."
     data_tests:
       - dbt_utils.unique_combination_of_columns:
@@ -101,9 +162,11 @@ models:
             combination_of_columns: ['order_id', 'order_item_id']
     columns:
       - name: order_item_key
+        data_type: VARCHAR
         description: "Row key built from order_id + order_item_id."
         data_tests: [unique, not_null]
       - name: order_id
+        data_type: VARCHAR
         description: "Degenerate dimension."
         data_tests:
           - not_null
@@ -112,9 +175,11 @@ models:
                 to: ref('stg_olist__orders')
                 field: order_id
       - name: order_item_id
+        data_type: INTEGER
         description: "Degenerate dimension."
         data_tests: [not_null]
       - name: customer_key
+        data_type: VARCHAR
         description: "Foreign key to dim_customers."
         data_tests:
           - not_null
@@ -123,6 +188,7 @@ models:
                 to: ref('dim_customers')
                 field: customer_key
       - name: product_key
+        data_type: VARCHAR
         description: "Foreign key to dim_products."
         data_tests:
           - not_null
@@ -131,6 +197,7 @@ models:
                 to: ref('dim_products')
                 field: product_key
       - name: seller_key
+        data_type: VARCHAR
         description: "Foreign key to dim_sellers."
         data_tests:
           - not_null
@@ -139,6 +206,7 @@ models:
                 to: ref('dim_sellers')
                 field: seller_key
       - name: order_date_key
+        data_type: INTEGER
         description: "Purchase date, role-playing dim_dates key."
         data_tests:
           - not_null
@@ -147,6 +215,7 @@ models:
                 to: ref('dim_dates')
                 field: date_key
       - name: shipping_limit_date_key
+        data_type: INTEGER
         description: "Shipping limit date, role-playing dim_dates key."
         data_tests:
           - not_null
@@ -155,29 +224,46 @@ models:
                 to: ref('dim_dates')
                 field: date_key
       - name: quantity
+        data_type: INTEGER
         description: "Always 1 by construction, kept so summing quantity is a legal additive measure."
         data_tests:
           - dbt_utils.expression_is_true:
               arguments:
                 expression: "= 1"
       - name: price
+        data_type: DECIMAL(10,2)
         description: "Unit price in BRL. Additive."
         data_tests:
           - not_null
           - dbt_utils.expression_is_true:
               arguments:
                 expression: ">= 0"
+      - name: freight_value
+        data_type: DECIMAL(10,2)
+        description: "Freight allocated to this line. Additive."
+      - name: is_late
+        data_type: BOOLEAN
+        description: "Whether the parent order was delivered late."
 
   - name: dim_customers
+    config:
+      contract:
+        enforced: true
+    constraints:
+      - type: primary_key
+        columns: [customer_key]
     description: "Conformed customer dimension, one row per person (customer_unique_id). Primary key is customer_key."
     columns:
       - name: customer_key
+        data_type: VARCHAR
         description: "Surrogate primary key, md5 of customer_unique_id."
         data_tests: [unique, not_null]
       - name: customer_unique_id
+        data_type: VARCHAR
         description: "Alternate key: the person identifier from the source."
         data_tests: [unique, not_null]
       - name: state
+        data_type: VARCHAR
         description: "State of the most recent order."
         data_tests:
           - dbt_utils.expression_is_true:
@@ -185,11 +271,42 @@ models:
                 # renders as "state is null or length(state) = 2"
                 expression: "is null or length(state) = 2"
       - name: customer_segment
+        data_type: VARCHAR
         description: "One-time or repeat buyer."
         data_tests:
           - accepted_values:
               arguments:
                 values: ['one_time', 'repeat']
+      - name: city
+        data_type: VARCHAR
+        description: "City of the most recent order."
+      - name: zip_code_prefix
+        data_type: VARCHAR
+        description: "Five-digit zip prefix of the most recent order."
+      - name: latitude
+        data_type: DOUBLE
+        description: "Latitude for the zip prefix."
+      - name: longitude
+        data_type: DOUBLE
+        description: "Longitude for the zip prefix."
+      - name: first_order_at
+        data_type: TIMESTAMP
+        description: "Timestamp of the first order."
+      - name: last_order_at
+        data_type: TIMESTAMP
+        description: "Timestamp of the most recent order."
+      - name: order_count
+        data_type: BIGINT
+        description: "Number of orders placed by this person."
+      - name: lifetime_value
+        data_type: DECIMAL(38,2)
+        description: "Total payment amount across all orders. BRL."
+      - name: avg_order_value
+        data_type: DOUBLE
+        description: "Average payment amount per order. BRL."
+      - name: avg_review_score
+        data_type: DOUBLE
+        description: "Average review score across this person's reviews."
 
   - name: dim_products
     description: "Conformed product dimension, one row per product. Category attributes are flattened here; no snowflake."
@@ -232,6 +349,12 @@ models:
         data_tests: [unique, not_null]
 
   - name: fct_payments
+    config:
+      contract:
+        enforced: true
+    constraints:
+      - type: primary_key
+        columns: [payment_key]
     description: "Transaction fact, one row per payment. The payments table has no timestamp, so order_date_key uses the order purchase date as a proxy."
     data_tests:
       - dbt_utils.unique_combination_of_columns:
@@ -239,8 +362,10 @@ models:
             combination_of_columns: ['order_id', 'payment_sequential']
     columns:
       - name: payment_key
+        data_type: VARCHAR
         data_tests: [unique, not_null]
       - name: customer_key
+        data_type: VARCHAR
         data_tests:
           - not_null
           - relationships:
@@ -248,6 +373,7 @@ models:
                 to: ref('dim_customers')
                 field: customer_key
       - name: order_date_key
+        data_type: INTEGER
         data_tests:
           - not_null
           - relationships:
@@ -255,13 +381,24 @@ models:
                 to: ref('dim_dates')
                 field: date_key
       - name: payment_type
+        data_type: VARCHAR
         data_tests:
           - accepted_values:
               arguments:
                 values: ['credit_card', 'boleto', 'voucher', 'debit_card', 'not_defined']
       - name: payment_value
+        data_type: DECIMAL(10,2)
         data_tests:
           - not_null
           - dbt_utils.expression_is_true:
               arguments:
                 expression: ">= 0"
+      - name: order_id
+        data_type: VARCHAR
+        description: "Degenerate dimension."
+      - name: payment_sequential
+        data_type: INTEGER
+        description: "Degenerate dimension: sequence within the order."
+      - name: payment_installments
+        data_type: INTEGER
+        description: "Installments chosen for this payment. Non-additive."

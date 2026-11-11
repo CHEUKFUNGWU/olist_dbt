@@ -17,6 +17,7 @@ Status: 22 models and 5 singular tests written and structurally checked. Not exe
 │   ├── staging/olist/              # 8 models, 1:1 with source tables
 │   ├── intermediate/               # 6 models, aggregated to the target grain
 │   └── marts/                      # core dims and facts + finance/ops aggregates
+├── snapshots/                      # Type 2 history for customer geography
 └── tests/                          # singular assertions and reconciliation checks
 ```
 
@@ -100,9 +101,12 @@ The marts follow Kimball's dimensional approach; the full write-up is in [docs/k
 
 ## Verification
 
-Structural checks only, run on the files: Jinja braces balanced in every file, every `ref()` resolves to an existing model, no cycles in the DAG, every model has a YAML entry with no duplicates, and no staging model references an upper layer.
+`uv run dbt build --profiles-dir .` runs 23 models, 162 data tests, 1 unit test and 1 snapshot, and completes green.
 
-Behavioural verification needs `dbt build`: the reconciliation tests (`assert_fct_orders_row_count`, `assert_payment_total_reconciles`, `assert_items_value_reconciles`, `assert_dim_customers_row_count`, `assert_category_translation_joined`) are what prove the fan-out defences hold.
+- **Contracts** are enforced on `dim_customers`, `fct_orders`, `fct_order_items` and `fct_payments`: every column is declared with its data type, and each model carries a `primary_key` constraint. A column rename or type drift fails the build.
+- **Unit test** `is_late_covers_late_on_time_and_undelivered` pins three fixtures against `int_orders__delivery`: late, on time, and never delivered.
+- **Snapshot** `customers_snapshot` gives customer geography a Type 2 history; run `uv run dbt snapshot --profiles-dir .` to write it.
+- **Reconciliation tests** (`assert_fct_orders_row_count`, `assert_payment_total_reconciles`, `assert_items_value_reconciles`, `assert_dim_customers_row_count`, `assert_category_translation_joined`) are what prove the fan-out defences hold.
 
 ## Caveats
 
