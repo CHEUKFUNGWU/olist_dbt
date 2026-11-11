@@ -36,6 +36,14 @@
         }
       },
       {
+        "id": "freight",
+        "label": "Freight",
+        "format": "money",
+        "expr": {
+          "sum": "freight_value"
+        }
+      },
+      {
         "id": "orders",
         "label": "Orders",
         "format": "count",
@@ -165,6 +173,12 @@
           "measure": "revenue"
         },
         {
+          "id": "w9",
+          "kind": "trend",
+          "title": "Monthly freight",
+          "measure": "freight"
+        },
+        {
           "id": "w6",
           "kind": "breakdown",
           "title": "Late rate by state",
@@ -188,6 +202,7 @@
           "measures": [
             "orders",
             "revenue",
+            "freight",
             "late_rate",
             "avg_review"
           ]
