@@ -17,20 +17,50 @@ Fact tables: `fct_order_items` (transaction fact, 112,650 rows) and `fct_orders`
 
 ---
 
-## 2. Bus matrix
+## 2. Bus matrix and requirements
 
-`X` marks a dimension used by the fact table.
+### 2.1 Bus matrix
 
-| Business process | Fact table | date | customer | product | seller | status |
-|---|---|---|---|---|---|---|
-| Order line | `fct_order_items` | X (2 roles) | X | X | X | |
-| Order fulfilment | `fct_orders` | X (5 roles) | X | | | X |
-| Payments | `fct_payments` (planned) | X | X | | | X (junk) |
-| Reviews | `fct_reviews` (planned) | X | X | X | X | |
+`X` marks a dimension used by the fact table. A bracket names a role-playing date; every date column is a role.
 
-Conformed dimensions are shared by key, not by copy: `dim_customers.customer_key` means the same customer in every fact.
+| Business process | Fact table | date | customer | product | seller | status | Built |
+|---|---|---|---|---|---|---|---|
+| Order line (transaction) | `fct_order_items` | X (2 roles) | X | X | X | | yes |
+| Order fulfilment (accumulated snapshot) | `fct_orders` | X (5 roles) | X | | | X | yes |
+| Payment (transaction) | `fct_payments` | X (order date as proxy) | X | | | X (payment type) | yes |
+| Review (transaction) | `fct_reviews` | X | X | X | X | X (score) | no |
 
----
+`fct_reviews` stays unbuilt on purpose: the review grain is `review_id`, and nothing downstream has needed it yet. It becomes worth building the moment someone asks a question that mixes reviews with seller or product performance at the review grain.
+
+### 2.2 Requirements matrix
+
+Business questions mapped to the model that answers them. A new model is justified only when the **grain**, the **process combination** or the **pre-aggregation need** changes; a different slice of an existing fact is a dashboard filter.
+
+**Already answered**
+
+| Question | Grain | Source | Model |
+|---|---|---|---|
+| Monthly revenue and its trend | month × category | `fct_order_items`, `dim_products`, `dim_dates` | `mart_finance__monthly_revenue` |
+| Delivery performance by state | month × state | `fct_orders`, `dim_customers`, `dim_dates` | `mart_ops__delivery_sla` |
+| Which orders are late, with drill-down | order | `fct_orders` | `fct_orders`, exported as Parquet |
+| Who is a repeat customer, and what they are worth | customer | `dim_customers` | `dim_customers` |
+
+**Worth building**
+
+| Question | Grain | Source | Why a new model, not a filter |
+|---|---|---|---|
+| Which sellers need intervention | seller | `fct_order_items`, `fct_orders`, `int_sellers__order_rollup` | New grain: ranks 1,271 sellers with 10+ orders; 71 sit above a 20% late rate, the worst at 64.29% |
+| Does lateness drive bad reviews | month × is_late | `fct_orders`, `dim_dates` | Combines two processes at one grain. Late orders average 2.57 stars with 54.0% scoring 2 or below; on-time orders average 4.30 with 9.2% |
+| Payment method and installment mix | month × payment_type | `fct_payments`, `dim_dates` | Payments are a separate process from items; the shaper of cash flow is not visible in either existing mart |
+
+**Deliberately not building**
+
+| Question | Why not |
+|---|---|
+| Revenue by state or by category | Same fact sliced by another dimension. A dashboard filter does it, and a new model would fork the definition |
+| Customer geography map | `dim_customers` already carries state and coordinates |
+| Review text sentiment | No text tooling here, and free text carries personal data |
+| Seller cancellation rate | Belongs inside the seller scorecard above, not in its own table |
 
 ## 3. Star schemas
 
@@ -126,7 +156,7 @@ Duration and score measures are semi- or non-additive: summing `delivery_days` a
 ## 7. Deliberate deviations and next steps
 
 1. **Measures in dimensions.** `order_count`, `lifetime_value`, `gross_revenue` and `late_rate` sit in the entity dimensions as derived attributes. A stricter star moves them into periodic snapshot facts (`fct_customer_monthly`, `fct_seller_monthly`). Worth doing if reporting demands period-over-period comparison.
-2. **No payments or reviews facts yet.** Both are clean transaction facts with their own grain (`order_id` + `payment_sequential`; `review_id`). The bus matrix marks them planned.
+2. **Reviews are the one process without a fact table.** `fct_payments` now exists at `order_id` + `payment_sequential`; reviews would sit at `review_id` with the same four dimensions. Nothing downstream needs that grain yet, so it stays in the bus matrix as unbuilt rather than half-built.
 3. **No junk dimension.** Low-cardinality flags (`is_late`, `is_delivered`) stay in the fact. A junk dimension combining payment type, status and flags would be the textbook move once three or more such flags accumulate.
 4. **Type 2 history lives in a snapshot, not in the mart.** `dim_customers` is Type 1 and overwritten on each build; `snapshots/customers_snapshot.sql` keeps the version history with `dbt_valid_from` and `dbt_valid_to`. Joining a fact to the snapshot on `customer_id` and the order timestamp answers "which state was this customer in when they ordered".
 5. **Casing and naming.** Model names stay plural (`dim_customers`, `fct_orders`) for consistency with the existing project; Kimball's own convention is singular (`dim_customer`).
