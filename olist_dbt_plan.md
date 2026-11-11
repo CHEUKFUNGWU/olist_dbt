@@ -27,7 +27,7 @@ This plan was written before the build. Where the project outgrew it, the affect
 
 **In scope**
 - Land the 9 CSVs in `raw.olist` and declare them as sources
-- Build staging -> intermediate -> marts, 29 models
+- Build staging -> intermediate -> marts, 32 models
 - Data tests, unit tests and contracts, with primary key uniqueness covered everywhere it matters
 - Separate dev and prod schemas, slim CI with state selection
 - Documentation: every mart and every key column described, doc blocks reused
@@ -44,7 +44,7 @@ The draft held these back until the marts settled. All three landed later; each 
 
 **Still out of scope**
 - Streaming ingestion
-- Incremental models: the DuckDB load rebuilds in about 14 seconds, so incremental strategies would be practice for its own sake
+- Incremental models: the DuckDB load rebuilds in seconds, so incremental strategies would be practice for its own sake
 
 ---
 

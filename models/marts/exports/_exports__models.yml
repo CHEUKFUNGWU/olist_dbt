@@ -7,3 +7,9 @@ models:
     description: "Parquet feed of monthly revenue by category. Pre-aggregated, safe to chart directly."
   - name: export_delivery_sla
     description: "Parquet feed of delivery performance by month and state. Pre-aggregated."
+  - name: export_payment_mix
+    description: "Parquet feed of payment method and installment share by month. Pre-aggregated."
+  - name: export_review_delivery
+    description: "Parquet feed of review outcome against lateness by month. Pre-aggregated, one row per month and is_late."
+  - name: export_seller_performance
+    description: "Parquet feed of the seller scorecard. One row per seller, safe to rank directly."

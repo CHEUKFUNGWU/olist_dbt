@@ -2,7 +2,7 @@
 
 A dbt project over the Brazilian E-Commerce Public Dataset by Olist (9 CSVs). Full design notes live in [olist_dbt_plan.md](olist_dbt_plan.md).
 
-Status: 29 models, 180 data tests, 1 unit test and 1 snapshot, green end to end. `dbt build` passes all 211 nodes on DuckDB in roughly 14 seconds; see [Verification](#verification).
+Status: 32 models, 180 data tests, 1 unit test and 1 snapshot, green end to end. `dbt build` passes all 214 nodes on DuckDB in a few seconds; see [Verification](#verification).
 
 ## Layout
 
@@ -103,7 +103,7 @@ The marts follow Kimball's dimensional approach; the full write-up is in [docs/k
 
 `uv run dbt build --profiles-dir .` builds every model, runs the full test suite, the unit test and the snapshot, and completes green.
 
-The last full run on dbt 1.12.6 with the DuckDB adapter: `PASS=211 WARN=0 ERROR=0 SKIP=0` — 29 models, 180 data tests, 1 unit test and 1 snapshot, in about 14 seconds.
+The last full run on dbt 1.12.6 with the DuckDB adapter: `PASS=214 WARN=0 ERROR=0 SKIP=0` — 32 models, 180 data tests, 1 unit test and 1 snapshot, in under five seconds.
 
 - **Contracts** are enforced on `dim_customers`, `fct_orders`, `fct_order_items` and `fct_payments`: every column is declared with its data type, and each model carries a `primary_key` constraint. A column rename or type drift fails the build.
 - **Unit test** `is_late_covers_late_on_time_and_undelivered` pins three fixtures against `int_orders__delivery`: late, on time, and never delivered.
@@ -112,13 +112,16 @@ The last full run on dbt 1.12.6 with the DuckDB adapter: `PASS=211 WARN=0 ERROR=
 
 ## Dashboard feed (Parquet)
 
-Three models under `models/marts/exports/` publish the tables a dashboard needs as Parquet files, so the dashboard does not need the `.duckdb` file at all:
+Six models under `models/marts/exports/` publish the tables a dashboard needs as Parquet files, so the dashboard does not need the `.duckdb` file at all:
 
 | File | Content | Grain |
 |---|---|---|
 | `exports/fct_orders.parquet` | orders with delivery and payment measures | order |
 | `exports/monthly_revenue.parquet` | revenue by month and category | month + category |
 | `exports/delivery_sla.parquet` | delivery performance by month and state | month + state |
+| `exports/payment_mix.parquet` | payment method and installment share | month + payment type |
+| `exports/review_delivery.parquet` | review outcome against lateness | month + is_late |
+| `exports/seller_performance.parquet` | seller scorecard for ranking and drill-down | seller |
 
 They use dbt-duckdb's `external` materialization: dbt writes the file and leaves a view of the same name pointing at it, so `ref()` still works in dbt while a dashboard reads the file directly.
 
