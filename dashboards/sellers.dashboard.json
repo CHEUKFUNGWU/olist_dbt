@@ -1,12 +1,12 @@
 {
   "schema": 1,
+  "id": "3lzlonx2dttp7oqmrxtlotfkqj",
   "title": "Seller ranking",
   "source": {
     "kind": "file",
     "path": "exports/seller_performance.parquet"
   },
   "model": {
-    "date": "as_of_date",
     "currency": "BRL",
     "unit": "one",
     "dimensions": [
@@ -28,22 +28,6 @@
         "format": "count",
         "expr": {
           "countDistinct": "seller_id"
-        }
-      },
-      {
-        "id": "orders",
-        "label": "Orders",
-        "format": "count",
-        "expr": {
-          "sum": "order_count"
-        }
-      },
-      {
-        "id": "revenue",
-        "label": "Sales",
-        "format": "money",
-        "expr": {
-          "sum": "item_revenue"
         }
       },
       {
@@ -72,7 +56,16 @@
             "delivered"
           ]
         },
-        "good": "down"
+        "good": "down",
+        "decimals": 1
+      },
+      {
+        "id": "orders",
+        "label": "Orders",
+        "format": "count",
+        "expr": {
+          "sum": "order_count"
+        }
       },
       {
         "id": "cancelled",
@@ -92,22 +85,32 @@
             "orders"
           ]
         },
-        "good": "down"
+        "good": "down",
+        "decimals": 2
+      },
+      {
+        "id": "revenue",
+        "label": "Sales",
+        "format": "money",
+        "expr": {
+          "sum": "item_revenue"
+        },
+        "decimals": 0
       }
     ]
   },
   "view": {
     "layout": "grid",
-    "arrangement": "classic",
-    "range": {
-      "from": "2016-09-01",
-      "to": "2018-10-17"
-    }
+    "arrangement": "breakdown",
+    "range": "30d",
+    "compare": "none",
+    "date_filter": false
   },
   "pages": [
     {
       "id": "sellers",
-      "title": "All time, Sep 2016 – Oct 2018",
+      "title": "Seller ranking",
+      "subtitle": "Seller scorecard across the whole dataset",
       "widgets": [
         {
           "id": "w1",
@@ -118,14 +121,16 @@
         {
           "id": "w2",
           "kind": "kpi",
-          "title": "Overall late rate",
-          "measure": "late_rate"
+          "title": "Late rate",
+          "measure": "late_rate",
+          "subtitle": "Late delivered orders over delivered orders"
         },
         {
           "id": "w3",
           "kind": "kpi",
-          "title": "Overall cancellation rate",
-          "measure": "cancel_rate"
+          "title": "Cancellation rate",
+          "measure": "cancel_rate",
+          "subtitle": "Cancelled and unavailable orders over seller orders"
         },
         {
           "id": "w4",
@@ -133,18 +138,39 @@
           "title": "Seller late rate by state",
           "measure": "late_rate",
           "by": "seller_state",
-          "chart": "bars"
+          "chart": "bars",
+          "subtitle": "States with at least 100 delivered orders",
+          "where": [
+            {
+              "measure": "delivered",
+              "op": "\u003e=",
+              "value": 100
+            }
+          ]
         },
         {
           "id": "w5",
           "kind": "table",
-          "title": "Seller detail",
+          "title": "Highest late rate (top 20)",
           "by": "seller",
           "measures": [
-            "orders",
-            "revenue",
             "late_rate",
+            "delivered",
+            "late",
             "cancel_rate"
+          ],
+          "subtitle": "Sellers with at least 10 delivered orders, worst late rate first",
+          "sort": {
+            "measure": "late_rate",
+            "dir": "desc"
+          },
+          "limit": 20,
+          "where": [
+            {
+              "measure": "delivered",
+              "op": "\u003e=",
+              "value": 10
+            }
           ]
         }
       ]

@@ -1,5 +1,6 @@
 {
   "schema": 1,
+  "id": "w2flbjuqp2m2sn7k545pgyxssj",
   "title": "Operations overview",
   "source": {
     "kind": "file",
@@ -11,22 +12,12 @@
     "unit": "one",
     "dimensions": [
       {
-        "id": "customer_state",
+        "id": "state",
         "label": "State",
         "column": "customer_state"
       },
       {
-        "id": "order_status",
-        "label": "Order status",
-        "column": "order_status"
-      },
-      {
-        "id": "is_late",
-        "label": "Is late",
-        "column": "is_late"
-      },
-      {
-        "id": "lateness_bucket",
+        "id": "outcome",
         "label": "Delivery outcome",
         "column": "lateness_bucket"
       }
@@ -38,15 +29,9 @@
         "format": "money",
         "expr": {
           "sum": "payment_total"
-        }
-      },
-      {
-        "id": "freight",
-        "label": "Freight",
-        "format": "money",
-        "expr": {
-          "sum": "freight_value"
-        }
+        },
+        "good": "up",
+        "decimals": 0
       },
       {
         "id": "orders",
@@ -65,10 +50,11 @@
             "revenue",
             "orders"
           ]
-        }
+        },
+        "decimals": 0
       },
       {
-        "id": "delivered_orders",
+        "id": "delivered",
         "label": "Delivered orders",
         "format": "count",
         "expr": {
@@ -76,7 +62,7 @@
         }
       },
       {
-        "id": "late_orders",
+        "id": "late",
         "label": "Late orders",
         "format": "count",
         "expr": {
@@ -89,39 +75,12 @@
         "format": "percent",
         "expr": {
           "ratio": [
-            "late_orders",
-            "delivered_orders"
+            "late",
+            "delivered"
           ]
         },
-        "good": "down"
-      },
-      {
-        "id": "reviewed_orders",
-        "label": "Reviewed orders",
-        "format": "count",
-        "expr": {
-          "sum": "reviewed_flag"
-        }
-      },
-      {
-        "id": "low_score_orders",
-        "label": "Low-score orders",
-        "format": "count",
-        "expr": {
-          "sum": "low_score_flag"
-        }
-      },
-      {
-        "id": "low_score_rate",
-        "label": "Low-score rate",
-        "format": "percent",
-        "expr": {
-          "ratio": [
-            "low_score_orders",
-            "reviewed_orders"
-          ]
-        },
-        "good": "down"
+        "good": "down",
+        "decimals": 1
       },
       {
         "id": "avg_review",
@@ -130,22 +89,26 @@
         "expr": {
           "avg": "latest_review_score"
         },
-        "good": "up"
+        "good": "up",
+        "decimals": 2
       }
     ]
   },
   "view": {
     "layout": "grid",
-    "arrangement": "flow",
+    "arrangement": "classic",
     "range": {
       "from": "2017-01-01",
       "to": "2018-08-31"
-    }
+    },
+    "compare": "none",
+    "date_filter": true
   },
   "pages": [
     {
       "id": "overview",
-      "title": "Overview",
+      "title": "Operations overview",
+      "subtitle": "Revenue, delivery and reviews, January 2017 to August 2018",
       "widgets": [
         {
           "id": "w1",
@@ -163,7 +126,8 @@
           "id": "w3",
           "kind": "kpi",
           "title": "Late rate",
-          "measure": "late_rate"
+          "measure": "late_rate",
+          "subtitle": "Late delivered orders over delivered orders"
         },
         {
           "id": "w4",
@@ -174,49 +138,51 @@
         {
           "id": "w5",
           "kind": "trend",
-          "title": "Monthly revenue",
-          "measure": "revenue"
-        },
-        {
-          "id": "w10",
-          "kind": "trend",
-          "title": "Monthly AOV",
-          "measure": "aov"
-        },
-        {
-          "id": "w9",
-          "kind": "trend",
-          "title": "Monthly freight",
-          "measure": "freight"
+          "title": "Monthly revenue and average order value",
+          "compare": "none",
+          "measures": [
+            "revenue",
+            "aov"
+          ],
+          "subtitle": "Bars are revenue on the left axis; the line is average order value on the right",
+          "granularity": "month",
+          "series": [
+            {
+              "measure": "revenue",
+              "axis": "left",
+              "chart": "bar"
+            },
+            {
+              "measure": "aov",
+              "axis": "right",
+              "chart": "line"
+            }
+          ]
         },
         {
           "id": "w6",
           "kind": "breakdown",
           "title": "Late rate by state",
           "measure": "late_rate",
-          "by": "customer_state",
-          "chart": "bars"
+          "by": "state",
+          "chart": "bars",
+          "subtitle": "States with at least 100 delivered orders",
+          "where": [
+            {
+              "measure": "delivered",
+              "op": "\u003e=",
+              "value": 100
+            }
+          ]
         },
         {
           "id": "w7",
           "kind": "breakdown",
-          "title": "Review score: on time vs late",
+          "title": "Review score by delivery outcome",
           "measure": "avg_review",
-          "by": "lateness_bucket",
-          "chart": "bars"
-        },
-        {
-          "id": "w8",
-          "kind": "table",
-          "title": "State detail",
-          "by": "customer_state",
-          "measures": [
-            "orders",
-            "revenue",
-            "freight",
-            "late_rate",
-            "avg_review"
-          ]
+          "by": "outcome",
+          "chart": "bars",
+          "subtitle": "Average review score for on time, late and never delivered orders"
         }
       ]
     }
