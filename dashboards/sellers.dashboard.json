@@ -1,0 +1,179 @@
+{
+  "schema": 1,
+  "id": "3lzlonx2dttp7oqmrxtlotfkqj",
+  "title": "Seller ranking",
+  "source": {
+    "kind": "file",
+    "path": "exports/seller_performance.parquet"
+  },
+  "model": {
+    "currency": "BRL",
+    "unit": "one",
+    "dimensions": [
+      {
+        "id": "seller",
+        "label": "Seller",
+        "column": "seller_id"
+      },
+      {
+        "id": "seller_state",
+        "label": "Seller state",
+        "column": "state"
+      }
+    ],
+    "measures": [
+      {
+        "id": "sellers",
+        "label": "Sellers",
+        "format": "count",
+        "expr": {
+          "countDistinct": "seller_id"
+        }
+      },
+      {
+        "id": "delivered",
+        "label": "Delivered orders",
+        "format": "count",
+        "expr": {
+          "sum": "delivered_orders"
+        }
+      },
+      {
+        "id": "late",
+        "label": "Late orders",
+        "format": "count",
+        "expr": {
+          "sum": "late_orders"
+        }
+      },
+      {
+        "id": "late_rate",
+        "label": "Late rate",
+        "format": "percent",
+        "expr": {
+          "ratio": [
+            "late",
+            "delivered"
+          ]
+        },
+        "good": "down",
+        "decimals": 1
+      },
+      {
+        "id": "orders",
+        "label": "Orders",
+        "format": "count",
+        "expr": {
+          "sum": "order_count"
+        }
+      },
+      {
+        "id": "cancelled",
+        "label": "Cancelled orders",
+        "format": "count",
+        "expr": {
+          "sum": "cancelled_orders"
+        }
+      },
+      {
+        "id": "cancel_rate",
+        "label": "Cancellation rate",
+        "format": "percent",
+        "expr": {
+          "ratio": [
+            "cancelled",
+            "orders"
+          ]
+        },
+        "good": "down",
+        "decimals": 2
+      },
+      {
+        "id": "revenue",
+        "label": "Sales",
+        "format": "money",
+        "expr": {
+          "sum": "item_revenue"
+        },
+        "decimals": 0
+      }
+    ]
+  },
+  "view": {
+    "layout": "grid",
+    "arrangement": "breakdown",
+    "range": "30d",
+    "compare": "none",
+    "date_filter": false
+  },
+  "pages": [
+    {
+      "id": "sellers",
+      "title": "Seller ranking",
+      "subtitle": "Seller scorecard across the whole dataset",
+      "widgets": [
+        {
+          "id": "w1",
+          "kind": "kpi",
+          "title": "Sellers",
+          "measure": "sellers"
+        },
+        {
+          "id": "w2",
+          "kind": "kpi",
+          "title": "Late rate",
+          "measure": "late_rate",
+          "subtitle": "Late delivered orders over delivered orders"
+        },
+        {
+          "id": "w3",
+          "kind": "kpi",
+          "title": "Cancellation rate",
+          "measure": "cancel_rate",
+          "subtitle": "Cancelled and unavailable orders over seller orders"
+        },
+        {
+          "id": "w4",
+          "kind": "breakdown",
+          "title": "Seller late rate by state",
+          "measure": "late_rate",
+          "by": "seller_state",
+          "chart": "bars",
+          "subtitle": "States with at least 100 delivered orders",
+          "where": [
+            {
+              "measure": "delivered",
+              "op": "\u003e=",
+              "value": 100
+            }
+          ]
+        },
+        {
+          "id": "w5",
+          "kind": "table",
+          "title": "Highest late rate (top 20)",
+          "by": "seller",
+          "measures": [
+            "late_rate",
+            "delivered",
+            "late",
+            "cancel_rate"
+          ],
+          "subtitle": "Sellers with at least 10 delivered orders, worst late rate first",
+          "sort": {
+            "measure": "late_rate",
+            "dir": "desc"
+          },
+          "limit": 20,
+          "where": [
+            {
+              "measure": "delivered",
+              "op": "\u003e=",
+              "value": 10
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

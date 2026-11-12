@@ -1,0 +1,132 @@
+{
+  "schema": 1,
+  "id": "il3r7v7oqro5fbmpnjhtrbhafw",
+  "title": "Payment mix",
+  "source": {
+    "kind": "file",
+    "path": "exports/payment_mix.parquet"
+  },
+  "model": {
+    "date": "month_start",
+    "currency": "BRL",
+    "unit": "one",
+    "dimensions": [
+      {
+        "id": "payment_type",
+        "label": "Payment type",
+        "column": "payment_type",
+        "values": {
+          "boleto": "Boleto",
+          "credit_card": "Credit card",
+          "debit_card": "Debit card",
+          "not_defined": "Not defined",
+          "voucher": "Voucher"
+        }
+      }
+    ],
+    "measures": [
+      {
+        "id": "payment_value",
+        "label": "Payment value",
+        "format": "money",
+        "expr": {
+          "sum": "payment_value"
+        },
+        "good": "up",
+        "decimals": 0
+      },
+      {
+        "id": "payments",
+        "label": "Payments",
+        "format": "count",
+        "expr": {
+          "sum": "payment_count"
+        }
+      },
+      {
+        "id": "installment_payments",
+        "label": "Installment payments",
+        "format": "count",
+        "expr": {
+          "sum": "installment_payments"
+        }
+      },
+      {
+        "id": "installment_share",
+        "label": "Installment share",
+        "format": "percent",
+        "expr": {
+          "ratio": [
+            "installment_payments",
+            "payments"
+          ]
+        },
+        "decimals": 1
+      }
+    ]
+  },
+  "view": {
+    "layout": "grid",
+    "arrangement": "classic",
+    "range": {
+      "from": "2017-01-01",
+      "to": "2018-08-31"
+    },
+    "compare": "none",
+    "date_filter": true
+  },
+  "pages": [
+    {
+      "id": "mix",
+      "title": "Payment mix",
+      "subtitle": "Installments and payment methods, January 2017 to August 2018",
+      "widgets": [
+        {
+          "id": "w1",
+          "kind": "kpi",
+          "title": "Payment value",
+          "measure": "payment_value"
+        },
+        {
+          "id": "w2",
+          "kind": "kpi",
+          "title": "Installment share",
+          "measure": "installment_share",
+          "subtitle": "Payments made in more than one installment"
+        },
+        {
+          "id": "w3",
+          "kind": "trend",
+          "title": "Installment share by month",
+          "measure": "installment_share",
+          "subtitle": "Share of payments made in more than one installment",
+          "granularity": "month"
+        },
+        {
+          "id": "w4",
+          "kind": "breakdown",
+          "title": "Payment value by payment type",
+          "measure": "payment_value",
+          "by": "payment_type",
+          "chart": "donut",
+          "subtitle": "Total payment value by method"
+        },
+        {
+          "id": "w5",
+          "kind": "table",
+          "title": "Payment type detail",
+          "by": "payment_type",
+          "measures": [
+            "payment_value",
+            "payments",
+            "installment_share"
+          ],
+          "sort": {
+            "measure": "payment_value",
+            "dir": "desc"
+          }
+        }
+      ]
+    }
+  ]
+}
